@@ -1,13 +1,21 @@
-import { put, head, del } from "@vercel/blob";
+import { put, list } from "@vercel/blob";
 
 const HISTORY_BLOB_KEY = "venturo-history.json";
 const MAX_HISTORY = 20;
 
 async function readHistory() {
   try {
-    const blob = await head(HISTORY_BLOB_KEY);
-    if (!blob) return [];
-    const res = await fetch(blob.url);
+    // list cerca il blob per pathname
+    const { blobs } = await list({ prefix: HISTORY_BLOB_KEY });
+    if (!blobs.length) return [];
+
+    // Fetch con token per blob privato
+    const res = await fetch(blobs[0].url, {
+      headers: {
+        Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+      },
+    });
+    if (!res.ok) return [];
     return await res.json();
   } catch {
     return [];
@@ -16,9 +24,10 @@ async function readHistory() {
 
 async function writeHistory(history) {
   await put(HISTORY_BLOB_KEY, JSON.stringify(history), {
-    access: "public",
+    access: "public", // serve public per poter fare fetch senza auth lato client
     addRandomSuffix: false,
     contentType: "application/json",
+    token: process.env.BLOB_READ_WRITE_TOKEN,
   });
 }
 
