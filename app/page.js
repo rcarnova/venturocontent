@@ -3,9 +3,6 @@ import { useState, useEffect } from "react";
 
 const VENTURO_IMAGE_STYLE = `\n\n—\nStile fisso Venturo: fotografia editoriale europea. Nessuna persona. Nessun testo. Palette contenuta: bianchi polverosi, grigi ardesia, un solo accento caldo (ocra o ambra tenue). Luce naturale laterale o diffusa. Composizione essenziale, molto spazio negativo. Atmosfera sospesa, silenziosa. Qualità fotografica concettuale, non illustrativa. Formato orizzontale 16:9. No filtri Instagram, no stock photo aesthetic.`;
 
-const STORAGE_KEY = "venturo_history";
-const MAX_HISTORY = 20;
-
 const CHANNELS = [
   { id: "linkedin_long", label: "LinkedIn Long", icon: "◈" },
   { id: "linkedin_short", label: "LinkedIn Short", icon: "◇" },
@@ -20,35 +17,6 @@ const PILLAR_COLORS = {
   "Conversazioni che contano": "#8B7A6E",
   "Casi reali": "#6E7A8B",
 };
-
-function loadHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveToHistory(entry) {
-  try {
-    const history = loadHistory();
-    const newHistory = [entry, ...history].slice(0, MAX_HISTORY);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newHistory));
-    return newHistory;
-  } catch {
-    return [];
-  }
-}
-
-function deleteFromHistory(id) {
-  try {
-    const history = loadHistory().filter(e => e.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-    return history;
-  } catch {
-    return [];
-  }
-}
 
 function formatDate(ts) {
   const d = new Date(ts);
@@ -83,19 +51,16 @@ function RegenerateButton({ onClick, loading }) {
 function ChannelCard({ ch, data, input, onRegenerate }) {
   const [regenLoading, setRegenLoading] = useState(false);
   const [regenError, setRegenError] = useState(null);
-
   if (!data) return null;
 
   let content = "";
   if (ch.id === "image_prompt") content = (typeof data === "string" ? data : "") + VENTURO_IMAGE_STYLE;
   else if (ch.id === "substack") content = data.intro || "";
   else content = data.testo || "";
-
   const displayContent = ch.id === "image_prompt" ? (typeof data === "string" ? data : "") : content;
 
   const handleRegenerate = async () => {
-    setRegenLoading(true);
-    setRegenError(null);
+    setRegenLoading(true); setRegenError(null);
     try {
       const res = await fetch("/api/regenerate", {
         method: "POST",
@@ -115,26 +80,19 @@ function ChannelCard({ ch, data, input, onRegenerate }) {
   return (
     <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", padding: "20px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-        <span style={{ fontSize: "10px", letterSpacing: "0.14em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase" }}>
-          {ch.icon} {ch.label}
-        </span>
+        <span style={{ fontSize: "10px", letterSpacing: "0.14em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase" }}>{ch.icon} {ch.label}</span>
         <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
           <RegenerateButton onClick={handleRegenerate} loading={regenLoading} />
           <CopyButton text={content} />
         </div>
       </div>
-      {regenError && (
-        <div style={{ marginBottom: "10px", fontSize: "11px", color: "rgba(255,120,120,0.7)", fontFamily: "monospace" }}>{regenError}</div>
-      )}
+      {regenError && <div style={{ marginBottom: "10px", fontSize: "11px", color: "rgba(255,120,120,0.7)", fontFamily: "monospace" }}>{regenError}</div>}
       {ch.id === "substack" && data.titolo && (
         <div style={{ fontSize: "15px", color: "#C8A96E", marginBottom: "10px", fontFamily: "Georgia,serif", fontStyle: "italic", lineHeight: 1.4 }}>{data.titolo}</div>
       )}
       <p style={{
-        margin: 0,
-        fontSize: ch.id === "image_prompt" ? "11px" : "14px",
-        lineHeight: 1.78,
-        color: regenLoading ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.78)",
-        whiteSpace: "pre-wrap",
+        margin: 0, fontSize: ch.id === "image_prompt" ? "11px" : "14px", lineHeight: 1.78,
+        color: regenLoading ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.78)", whiteSpace: "pre-wrap",
         fontFamily: ch.id === "image_prompt" ? "monospace" : "inherit",
         background: ch.id === "image_prompt" ? "rgba(200,169,110,0.04)" : "transparent",
         padding: ch.id === "image_prompt" ? "12px" : "0",
@@ -152,27 +110,22 @@ function ChannelCard({ ch, data, input, onRegenerate }) {
   );
 }
 
-function HistorySidebar({ history, activeId, onSelect, onDelete }) {
+function HistorySidebar({ history, activeId, onSelect, onDelete, loading }) {
+  if (loading) return (
+    <div style={{ padding: "20px 16px", opacity: 0.3, fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)" }}>
+      Caricamento…
+    </div>
+  );
   if (history.length === 0) return (
     <div style={{ padding: "20px 16px", opacity: 0.25, fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>
       Nessuno storico
     </div>
   );
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
       {history.map(entry => (
-        <div
-          key={entry.id}
-          onClick={() => onSelect(entry)}
-          style={{
-            padding: "12px 16px",
-            cursor: "pointer",
-            background: activeId === entry.id ? "rgba(200,169,110,0.08)" : "transparent",
-            borderLeft: activeId === entry.id ? "2px solid #C8A96E" : "2px solid transparent",
-            transition: "all 0.15s",
-            position: "relative",
-          }}
+        <div key={entry.id} onClick={() => onSelect(entry)}
+          style={{ padding: "12px 16px", cursor: "pointer", background: activeId === entry.id ? "rgba(200,169,110,0.08)" : "transparent", borderLeft: activeId === entry.id ? "2px solid #C8A96E" : "2px solid transparent", transition: "all 0.15s", position: "relative" }}
           onMouseEnter={e => { if (activeId !== entry.id) e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
           onMouseLeave={e => { if (activeId !== entry.id) e.currentTarget.style.background = "transparent"; }}
         >
@@ -187,13 +140,9 @@ function HistorySidebar({ history, activeId, onSelect, onDelete }) {
               {entry.result.pillar}
             </div>
           )}
-          <button
-            onClick={e => { e.stopPropagation(); onDelete(entry.id); }}
-            style={{ position: "absolute", top: "10px", right: "10px", background: "none", border: "none", color: "rgba(255,255,255,0.2)", cursor: "pointer", fontSize: "12px", padding: "2px 5px", lineHeight: 1 }}
-            title="Elimina"
-          >
-            ×
-          </button>
+          <button onClick={e => { e.stopPropagation(); onDelete(entry.id); }}
+            style={{ position: "absolute", top: "10px", right: "10px", background: "none", border: "none", color: "rgba(255,255,255,0.2)", cursor: "pointer", fontSize: "14px", padding: "2px 5px", lineHeight: 1 }}
+            title="Elimina">×</button>
         </div>
       ))}
     </div>
@@ -207,12 +156,43 @@ export default function Home() {
   const [error, setError] = useState(null);
   const [active, setActive] = useState("linkedin_long");
   const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [activeHistoryId, setActiveHistoryId] = useState(null);
   const [showHistory, setShowHistory] = useState(true);
 
+  // Load history on mount
   useEffect(() => {
-    setHistory(loadHistory());
+    fetch("/api/history")
+      .then(r => r.json())
+      .then(data => { setHistory(Array.isArray(data) ? data : []); })
+      .catch(() => setHistory([]))
+      .finally(() => setHistoryLoading(false));
   }, []);
+
+  const saveEntry = async (entry) => {
+    try {
+      const res = await fetch("/api/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entry),
+      });
+      const updated = await res.json();
+      if (Array.isArray(updated)) setHistory(updated);
+    } catch {}
+  };
+
+  const deleteEntry = async (id) => {
+    try {
+      const res = await fetch("/api/history", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const updated = await res.json();
+      if (Array.isArray(updated)) setHistory(updated);
+      if (activeHistoryId === id) setActiveHistoryId(null);
+    } catch {}
+  };
 
   const generate = async () => {
     if (!input.trim() || loading) return;
@@ -227,11 +207,9 @@ export default function Home() {
       if (json.error) throw new Error(json.error);
       setResult(json);
       setActive("linkedin_long");
-
       const entry = { id: Date.now().toString(), timestamp: Date.now(), input, result: json };
-      const newHistory = saveToHistory(entry);
-      setHistory(newHistory);
       setActiveHistoryId(entry.id);
+      await saveEntry(entry);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -239,17 +217,16 @@ export default function Home() {
     }
   };
 
-  const handleRegenerate = (channelId, newValue) => {
+  const handleRegenerate = async (channelId, newValue) => {
     setResult(prev => {
       const updated = { ...prev, [channelId]: newValue };
-      // Update history entry too
       if (activeHistoryId) {
-        try {
-          const history = loadHistory();
-          const updated2 = history.map(e => e.id === activeHistoryId ? { ...e, result: updated } : e);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated2));
-          setHistory(updated2);
-        } catch {}
+        const updatedHistory = history.map(e => e.id === activeHistoryId ? { ...e, result: updated } : e);
+        fetch("/api/history", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedHistory.find(e => e.id === activeHistoryId)),
+        }).then(r => r.json()).then(data => { if (Array.isArray(data)) setHistory(data); }).catch(() => {});
       }
       return updated;
     });
@@ -261,14 +238,6 @@ export default function Home() {
     setActiveHistoryId(entry.id);
     setActive("linkedin_long");
     setError(null);
-  };
-
-  const handleDeleteHistory = (id) => {
-    const newHistory = deleteFromHistory(id);
-    setHistory(newHistory);
-    if (activeHistoryId === id) {
-      setActiveHistoryId(null);
-    }
   };
 
   const pillarColor = result ? (PILLAR_COLORS[result.pillar] || "#C8A96E") : "#C8A96E";
@@ -287,60 +256,43 @@ export default function Home() {
         .fadein { animation: fadein 0.3s ease-out; }
       `}</style>
 
-      {/* Header */}
       <header style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "18px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
           <span style={{ fontFamily: "Georgia,serif", fontSize: "20px", fontStyle: "italic" }}>Venturo</span>
           <span style={{ fontSize: "10px", letterSpacing: "0.18em", color: "rgba(255,255,255,0.22)", textTransform: "uppercase" }}>Content Suite</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <button
-            onClick={() => setShowHistory(h => !h)}
-            style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: showHistory ? "#C8A96E" : "rgba(255,255,255,0.3)", padding: "5px 14px", fontSize: "10px", letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}
-          >
+          <button onClick={() => setShowHistory(h => !h)}
+            style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: showHistory ? "#C8A96E" : "rgba(255,255,255,0.3)", padding: "5px 14px", fontSize: "10px", letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
             ◷ Storico {history.length > 0 ? `(${history.length})` : ""}
           </button>
           <span style={{ fontSize: "10px", letterSpacing: "0.11em", color: "rgba(200,169,110,0.5)", textTransform: "uppercase" }}>L&apos;invisibile diventa strategia</span>
         </div>
       </header>
 
-      {/* Body */}
       <main style={{ flex: 1, display: "grid", gridTemplateColumns: showHistory ? "220px 1fr 1fr" : "1fr 1fr" }}>
 
-        {/* HISTORY SIDEBAR */}
         {showHistory && (
           <div style={{ borderRight: "1px solid rgba(255,255,255,0.06)", overflowY: "auto", maxHeight: "calc(100vh - 57px)" }}>
-            <div style={{ padding: "16px 16px 8px", fontSize: "9px", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)" }}>
-              Storico
-            </div>
-            <HistorySidebar
-              history={history}
-              activeId={activeHistoryId}
-              onSelect={handleSelectHistory}
-              onDelete={handleDeleteHistory}
-            />
+            <div style={{ padding: "16px 16px 8px", fontSize: "9px", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)" }}>Storico condiviso</div>
+            <HistorySidebar history={history} activeId={activeHistoryId} onSelect={handleSelectHistory} onDelete={deleteEntry} loading={historyLoading} />
           </div>
         )}
 
         {/* LEFT — Input */}
         <div style={{ borderRight: "1px solid rgba(255,255,255,0.06)", padding: "28px 32px", display: "flex", flexDirection: "column", gap: "14px" }}>
           <span style={{ fontSize: "10px", letterSpacing: "0.18em", color: "rgba(255,255,255,0.22)", textTransform: "uppercase" }}>Input</span>
-          <textarea
-            value={input}
-            onChange={e => setInput(e.target.value)}
+          <textarea value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") generate(); }}
             placeholder={"Incolla una bozza, uno spunto o una notizia.\n\nEs: Wells Fargo multata 3 miliardi. Il danno reputazionale è stato molto di più — e nessuno lo aveva misurato prima."}
             style={{ flex: 1, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", padding: "16px", fontSize: "14px", lineHeight: 1.75, color: "rgba(255,255,255,0.82)", minHeight: "300px", fontFamily: "inherit", caretColor: "#C8A96E" }}
           />
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.16)" }}>
-              {input.length > 0 ? `${input.length} car · ⌘↵` : "⌘+Enter per generare"}
-            </span>
+            <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.16)" }}>{input.length > 0 ? `${input.length} car · ⌘↵` : "⌘+Enter per generare"}</span>
             <button className="gen-btn" onClick={generate} disabled={loading || !input.trim()} style={{ background: "#C8A96E", border: "none", color: "#0D0D0B", padding: "11px 26px", fontSize: "11px", letterSpacing: "0.13em", textTransform: "uppercase", fontWeight: "500", cursor: "pointer", fontFamily: "inherit" }}>
               {loading ? "Generando…" : "Genera contenuti"}
             </button>
           </div>
-
           {result && (
             <div className="fadein" style={{ padding: "14px 16px", borderLeft: `3px solid ${pillarColor}`, background: "rgba(255,255,255,0.02)" }}>
               <div style={{ fontSize: "9px", letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)", marginBottom: "5px" }}>Pillar identificato</div>
