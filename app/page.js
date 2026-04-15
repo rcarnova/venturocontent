@@ -256,9 +256,9 @@ export default function Home() {
         .fadein { animation: fadein 0.3s ease-out; }
       `}</style>
 
-      <header style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "18px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-          <span style={{ fontFamily: "Georgia,serif", fontSize: "20px", fontStyle: "italic" }}>Venturo</span>
+      <header style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <img src="/logo-venturo.webp" alt="Venturo" style={{ height: "28px", width: "auto", filter: "invert(1)" }} />
           <span style={{ fontSize: "10px", letterSpacing: "0.18em", color: "rgba(255,255,255,0.22)", textTransform: "uppercase" }}>Content Suite</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
