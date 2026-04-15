@@ -1,4 +1,4 @@
-import { put, list, head } from "@vercel/blob";
+import { put, list, getDownloadUrl } from "@vercel/blob";
 
 const HISTORY_BLOB_KEY = "venturo-history.json";
 const MAX_HISTORY = 20;
@@ -6,27 +6,17 @@ const MAX_HISTORY = 20;
 async function readHistory() {
   try {
     const token = process.env.BLOB_READ_WRITE_TOKEN;
-
-    // Cerca il blob
     const { blobs } = await list({ prefix: HISTORY_BLOB_KEY, token });
-    console.log("[history] list result:", blobs.length, "blobs");
-
+    console.log("[history] blobs found:", blobs.length);
     if (!blobs.length) return [];
 
-    // Fetch con il token nell'header Authorization
-    const url = blobs[0].downloadUrl || blobs[0].url;
-    console.log("[history] fetching url:", url);
+    // Per blob privati usa getDownloadUrl che genera URL firmato
+    const downloadUrl = await getDownloadUrl(blobs[0].url, { token });
+    console.log("[history] downloadUrl ok");
 
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
+    const res = await fetch(downloadUrl);
     console.log("[history] fetch status:", res.status);
-    if (!res.ok) {
-      const txt = await res.text();
-      console.error("[history] fetch error body:", txt.slice(0, 200));
-      return [];
-    }
+    if (!res.ok) return [];
 
     const data = await res.json();
     console.log("[history] loaded entries:", data.length);
@@ -39,21 +29,14 @@ async function readHistory() {
 
 async function writeHistory(history) {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
-  console.log("[history] writing", history.length, "entries with token:", token?.slice(0, 10));
-
-  try {
-    const result = await put(HISTORY_BLOB_KEY, JSON.stringify(history), {
-      access: "public",
-      addRandomSuffix: false,
-      contentType: "application/json",
-      token,
-    });
-    console.log("[history] put success, url:", result.url);
-    return result;
-  } catch (err) {
-    console.error("[history] put error:", err.message, JSON.stringify(err));
-    throw err;
-  }
+  console.log("[history] writing", history.length, "entries");
+  const result = await put(HISTORY_BLOB_KEY, JSON.stringify(history), {
+    access: "private",
+    addRandomSuffix: false,
+    contentType: "application/json",
+    token,
+  });
+  console.log("[history] written ok:", result.pathname);
 }
 
 export async function GET() {
@@ -69,7 +52,6 @@ export async function GET() {
 export async function POST(req) {
   try {
     const entry = await req.json();
-    console.log("[history] POST entry id:", entry?.id);
     if (!entry?.id) return Response.json({ error: "Entry non valida" }, { status: 400 });
 
     const history = await readHistory();
