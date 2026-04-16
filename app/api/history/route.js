@@ -1,4 +1,4 @@
-import { put, list, getDownloadUrl } from "@vercel/blob";
+import { put, list } from "@vercel/blob";
 
 const HISTORY_BLOB_KEY = "venturo-history.json";
 const MAX_HISTORY = 20;
@@ -10,16 +10,27 @@ async function readHistory() {
     console.log("[history] blobs found:", blobs.length);
     if (!blobs.length) return [];
 
-    // Per blob privati usa getDownloadUrl che genera URL firmato
-    const downloadUrl = await getDownloadUrl(blobs[0].url, { token });
-    console.log("[history] downloadUrl ok");
+    const blobUrl = blobs[0].url;
+    console.log("[history] url:", blobUrl);
 
-    const res = await fetch(downloadUrl);
+    // Per blob privati su Vercel, il token va nell'header Authorization
+    const res = await fetch(blobUrl, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+
     console.log("[history] fetch status:", res.status);
-    if (!res.ok) return [];
+
+    if (!res.ok) {
+      const body = await res.text();
+      console.error("[history] fetch body:", body.slice(0, 300));
+      return [];
+    }
 
     const data = await res.json();
-    console.log("[history] loaded entries:", data.length);
+    console.log("[history] entries loaded:", data.length);
     return data;
   } catch (err) {
     console.error("[history] readHistory error:", err.message);
