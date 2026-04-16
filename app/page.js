@@ -240,6 +240,14 @@ export default function Home() {
     setError(null);
   };
 
+  const handleNew = () => {
+    setInput("");
+    setResult(null);
+    setActiveHistoryId(null);
+    setError(null);
+    setActive("linkedin_long");
+  };
+
   const pillarColor = result ? (PILLAR_COLORS[result.pillar] || "#E1FF04") : "#E1FF04";
 
   return (
@@ -262,6 +270,10 @@ export default function Home() {
           <span style={{ fontSize: "10px", letterSpacing: "0.18em", color: "rgba(255,255,255,0.22)", textTransform: "uppercase" }}>Content Suite</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          <button onClick={handleNew}
+            style={{ background: "#E1FF04", border: "none", color: "#0D0D0B", padding: "5px 14px", fontSize: "10px", letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", fontWeight: "500", transition: "all 0.2s" }}>
+            + Nuovo
+          </button>
           <button onClick={() => setShowHistory(h => !h)}
             style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: showHistory ? "#E1FF04" : "rgba(255,255,255,0.3)", padding: "5px 14px", fontSize: "10px", letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
             ◷ Storico {history.length > 0 ? `(${history.length})` : ""}
