@@ -39,14 +39,28 @@ function extractJson(raw) {
   try {
     const s = raw.indexOf("{");
     const e = raw.lastIndexOf("}");
-    if (s !== -1 && e !== -1) return JSON.parse(raw.slice(s, e + 1));
-  } catch {}
-  const cleaned = raw.replace(/[\r\n]+/g, "\\n").replace(/\t/g, " ");
+    if (s !== -1 && e !== -1) {
+      const jsonStr = raw.slice(s, e + 1);
+      return JSON.parse(jsonStr);
+    }
+  } catch (err) {
+    console.error("[regenerate] First parse attempt failed:", err.message);
+  }
+
+  // Try with newline/tab cleanup
+  const cleaned = raw.replace(/[\r\n]+/g, " ").replace(/\t/g, " ").trim();
   try {
     const s = cleaned.indexOf("{");
     const e = cleaned.lastIndexOf("}");
-    if (s !== -1 && e !== -1) return JSON.parse(cleaned.slice(s, e + 1));
-  } catch {}
+    if (s !== -1 && e !== -1) {
+      const jsonStr = cleaned.slice(s, e + 1);
+      return JSON.parse(jsonStr);
+    }
+  } catch (err) {
+    console.error("[regenerate] Second parse attempt failed:", err.message);
+  }
+
+  console.error("[regenerate] Raw response:", raw.slice(0, 500));
   throw new Error("JSON non parsabile. Raw: " + raw.slice(0, 300));
 }
 
