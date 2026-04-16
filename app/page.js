@@ -1,13 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
 
-const VENTURO_IMAGE_STYLE = `\n\n—\nNote tecniche Midjourney: fotografia analogica, qualità editoriale. Nessuna persona. Palette desaturata con un solo accento cromatico. Billboard classico americano nel deserto, luce radente dorata o crepuscolare, cielo vasto, atmosfera Prada Marfa. --ar 16:9 --v 6.1 --style raw`;
+const VENTURO_IMAGE_STYLE = "";
 
 const CHANNELS = [
   { id: "linkedin_long", label: "LinkedIn Long", icon: "◈" },
   { id: "linkedin_short", label: "LinkedIn Short", icon: "◇" },
   { id: "twitter", label: "Twitter / X", icon: "✕" },
   { id: "substack", label: "Substack", icon: "◉" },
+  { id: "carousel", label: "Carosello", icon: "▥" },
   { id: "image_prompt", label: "Image Prompt", icon: "▣" },
 ];
 
@@ -45,6 +46,112 @@ function RegenerateButton({ onClick, loading }) {
     >
       {loading ? "↻ ..." : "↻ Rigenera"}
     </button>
+  );
+}
+
+function CarouselCard({ data, input, onRegenerate }) {
+  const [regenLoading, setRegenLoading] = useState(false);
+  const [regenError, setRegenError] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  if (!data || !Array.isArray(data)) return null;
+
+  const handleDownloadPdf = async () => {
+    setPdfLoading(true);
+    try {
+      const pdfServiceUrl = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || "";
+      if (!pdfServiceUrl) throw new Error("PDF_SERVICE_URL non configurato");
+      const res = await fetch(`${pdfServiceUrl}/generate-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slides: data }),
+      });
+      if (!res.ok) throw new Error(`Errore PDF: ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "venturo-carousel.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const fullText = data.map(s => `Slide ${s.slide}: ${s.titolo}\n${s.testo}`).join("\n\n");
+
+  const handleRegenerate = async () => {
+    setRegenLoading(true); setRegenError(null);
+    try {
+      const res = await fetch("/api/regenerate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input, channel: "carousel" }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      onRegenerate("carousel", json.value);
+    } catch (err) {
+      setRegenError(err.message);
+    } finally {
+      setRegenLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", padding: "20px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <span style={{ fontSize: "10px", letterSpacing: "0.14em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase" }}>▥ Carosello LinkedIn · 5 slide</span>
+        <div style={{ display: "flex", gap: "6px" }}>
+          <button onClick={handleRegenerate} disabled={regenLoading}
+            style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: regenLoading ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.3)", padding: "3px 12px", fontSize: "10px", letterSpacing: "0.1em", cursor: regenLoading ? "not-allowed" : "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
+            {regenLoading ? "↻ ..." : "↻ Rigenera"}
+          </button>
+          <button onClick={() => navigator.clipboard.writeText(fullText)}
+            style={{ background: "none", border: "1px solid rgba(225,255,4,0.3)", color: "rgba(255,255,255,0.35)", padding: "3px 12px", fontSize: "10px", letterSpacing: "0.1em", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
+            Copia tutto
+          </button>
+          <button onClick={handleDownloadPdf}
+            disabled={pdfLoading}
+            style={{ background: pdfLoading ? "rgba(225,255,4,0.4)" : "#E1FF04", border: "none", color: "#0D0D0B", padding: "3px 12px", fontSize: "10px", letterSpacing: "0.1em", cursor: pdfLoading ? "not-allowed" : "pointer", fontFamily: "inherit", textTransform: "uppercase", fontWeight: "500" }}>
+            {pdfLoading ? "..." : "↓ PDF"}
+          </button>
+        </div>
+      </div>
+      {regenError && <div style={{ marginBottom: "12px", fontSize: "11px", color: "rgba(255,120,120,0.7)" }}>{regenError}</div>}
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        {data.map((slide) => (
+          <div key={slide.slide} style={{
+            display: "flex", gap: "14px", alignItems: "flex-start",
+            padding: "14px 16px",
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,255,255,0.06)",
+          }}>
+            <div style={{
+              minWidth: "24px", height: "24px",
+              background: "rgba(225,255,4,0.1)",
+              border: "1px solid rgba(225,255,4,0.25)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "10px", color: "#E1FF04", fontWeight: "500",
+              flexShrink: 0,
+            }}>
+              {slide.slide}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: "12px", fontWeight: "500", color: "rgba(255,255,255,0.9)", marginBottom: "4px", letterSpacing: "0.02em" }}>
+                {slide.titolo}
+              </div>
+              <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>
+                {slide.testo}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -351,7 +458,9 @@ export default function Home() {
                 ))}
               </div>
               {CHANNELS.filter(c => c.id === active).map(ch => (
-                <ChannelCard key={ch.id} ch={ch} data={result[ch.id]} input={input} onRegenerate={handleRegenerate} />
+                ch.id === "carousel"
+                  ? <CarouselCard key={ch.id} data={result[ch.id]} input={input} onRegenerate={handleRegenerate} />
+                  : <ChannelCard key={ch.id} ch={ch} data={result[ch.id]} input={input} onRegenerate={handleRegenerate} />
               ))}
             </div>
           )}
