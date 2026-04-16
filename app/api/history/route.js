@@ -1,4 +1,4 @@
-import { put, list } from "@vercel/blob";
+import { put, list, get } from "@vercel/blob";
 
 const HISTORY_BLOB_KEY = "venturo-history.json";
 const MAX_HISTORY = 20;
@@ -6,30 +6,26 @@ const MAX_HISTORY = 20;
 async function readHistory() {
   try {
     const token = process.env.BLOB_READ_WRITE_TOKEN;
+
+    // Trova il blob
     const { blobs } = await list({ prefix: HISTORY_BLOB_KEY, token });
     console.log("[history] blobs found:", blobs.length);
     if (!blobs.length) return [];
 
-    const blobUrl = blobs[0].url;
-    console.log("[history] url:", blobUrl);
+    // Usa get() dell'SDK — gestisce auth internamente per store privati
+    const blobResult = await get(blobs[0].url, { token });
+    console.log("[history] get result type:", typeof blobResult);
 
-    // Per blob privati su Vercel, il token va nell'header Authorization
-    const res = await fetch(blobUrl, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    });
-
-    console.log("[history] fetch status:", res.status);
-
-    if (!res.ok) {
-      const body = await res.text();
-      console.error("[history] fetch body:", body.slice(0, 300));
+    if (!blobResult) {
+      console.log("[history] get returned null");
       return [];
     }
 
-    const data = await res.json();
+    // get() restituisce un Blob object — leggi il testo
+    const text = await blobResult.text();
+    console.log("[history] text preview:", text.slice(0, 80));
+
+    const data = JSON.parse(text);
     console.log("[history] entries loaded:", data.length);
     return data;
   } catch (err) {
