@@ -12,7 +12,7 @@ const CHANNELS = [
 ];
 
 const PILLAR_COLORS = {
-  "Economia dell'identità": "#C8A96E",
+  "Economia dell'identità": "#E1FF04",
   "Anatomia del non detto": "#7A8B7F",
   "Conversazioni che contano": "#8B7A6E",
   "Casi reali": "#6E7A8B",
@@ -29,7 +29,7 @@ function CopyButton({ text }) {
   return (
     <button
       onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-      style={{ background: "none", border: "1px solid rgba(200,169,110,0.3)", color: copied ? "#C8A96E" : "rgba(255,255,255,0.35)", padding: "3px 12px", fontSize: "10px", letterSpacing: "0.1em", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", transition: "color 0.2s" }}
+      style={{ background: "none", border: "1px solid rgba(225,255,4,0.3)", color: copied ? "#E1FF04" : "rgba(255,255,255,0.35)", padding: "3px 12px", fontSize: "10px", letterSpacing: "0.1em", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", transition: "color 0.2s" }}
     >
       {copied ? "✓ Copiato" : "Copia"}
     </button>
@@ -88,22 +88,22 @@ function ChannelCard({ ch, data, input, onRegenerate }) {
       </div>
       {regenError && <div style={{ marginBottom: "10px", fontSize: "11px", color: "rgba(255,120,120,0.7)", fontFamily: "monospace" }}>{regenError}</div>}
       {ch.id === "substack" && data.titolo && (
-        <div style={{ fontSize: "15px", color: "#C8A96E", marginBottom: "10px", fontFamily: "Georgia,serif", fontStyle: "italic", lineHeight: 1.4 }}>{data.titolo}</div>
+        <div style={{ fontSize: "15px", color: "#E1FF04", marginBottom: "10px", fontFamily: "Georgia,serif", fontStyle: "italic", lineHeight: 1.4 }}>{data.titolo}</div>
       )}
       <p style={{
         margin: 0, fontSize: ch.id === "image_prompt" ? "11px" : "14px", lineHeight: 1.78,
         color: regenLoading ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.78)", whiteSpace: "pre-wrap",
         fontFamily: ch.id === "image_prompt" ? "monospace" : "inherit",
-        background: ch.id === "image_prompt" ? "rgba(200,169,110,0.04)" : "transparent",
+        background: ch.id === "image_prompt" ? "rgba(225,255,4,0.04)" : "transparent",
         padding: ch.id === "image_prompt" ? "12px" : "0",
-        borderLeft: ch.id === "image_prompt" ? "2px solid rgba(200,169,110,0.2)" : "none",
+        borderLeft: ch.id === "image_prompt" ? "2px solid rgba(225,255,4,0.2)" : "none",
         transition: "color 0.3s",
       }}>
         {regenLoading ? "Rigenerando…" : displayContent}
       </p>
       {!regenLoading && data.hashtag?.length > 0 && (
         <div style={{ marginTop: "10px", display: "flex", flexWrap: "wrap", gap: "7px" }}>
-          {data.hashtag.map(h => <span key={h} style={{ fontSize: "10px", color: "#C8A96E", opacity: 0.6 }}>{h}</span>)}
+          {data.hashtag.map(h => <span key={h} style={{ fontSize: "10px", color: "#E1FF04", opacity: 0.6 }}>{h}</span>)}
         </div>
       )}
     </div>
@@ -125,18 +125,18 @@ function HistorySidebar({ history, activeId, onSelect, onDelete, loading }) {
     <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
       {history.map(entry => (
         <div key={entry.id} onClick={() => onSelect(entry)}
-          style={{ padding: "12px 16px", cursor: "pointer", background: activeId === entry.id ? "rgba(200,169,110,0.08)" : "transparent", borderLeft: activeId === entry.id ? "2px solid #C8A96E" : "2px solid transparent", transition: "all 0.15s", position: "relative" }}
+          style={{ padding: "12px 16px", cursor: "pointer", background: activeId === entry.id ? "rgba(225,255,4,0.08)" : "transparent", borderLeft: activeId === entry.id ? "2px solid #E1FF04" : "2px solid transparent", transition: "all 0.15s", position: "relative" }}
           onMouseEnter={e => { if (activeId !== entry.id) e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
           onMouseLeave={e => { if (activeId !== entry.id) e.currentTarget.style.background = "transparent"; }}
         >
-          <div style={{ fontSize: "9px", letterSpacing: "0.12em", textTransform: "uppercase", color: activeId === entry.id ? "#C8A96E" : "rgba(255,255,255,0.3)", marginBottom: "4px" }}>
+          <div style={{ fontSize: "9px", letterSpacing: "0.12em", textTransform: "uppercase", color: activeId === entry.id ? "#E1FF04" : "rgba(255,255,255,0.3)", marginBottom: "4px" }}>
             {formatDate(entry.timestamp)}
           </div>
           <div style={{ fontSize: "12px", color: activeId === entry.id ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.5)", lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
             {entry.input.slice(0, 80)}{entry.input.length > 80 ? "…" : ""}
           </div>
           {entry.result?.pillar && (
-            <div style={{ marginTop: "5px", fontSize: "9px", color: PILLAR_COLORS[entry.result.pillar] || "#C8A96E", opacity: 0.7 }}>
+            <div style={{ marginTop: "5px", fontSize: "9px", color: PILLAR_COLORS[entry.result.pillar] || "#E1FF04", opacity: 0.7 }}>
               {entry.result.pillar}
             </div>
           )}
@@ -240,13 +240,13 @@ export default function Home() {
     setError(null);
   };
 
-  const pillarColor = result ? (PILLAR_COLORS[result.pillar] || "#C8A96E") : "#C8A96E";
+  const pillarColor = result ? (PILLAR_COLORS[result.pillar] || "#E1FF04") : "#E1FF04";
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <style>{`
         .gen-btn { transition: all 0.2s; }
-        .gen-btn:hover:not(:disabled) { background: #D4B87A !important; transform: translateY(-1px); }
+        .gen-btn:hover:not(:disabled) { background: #E1FF04 !important; transform: translateY(-1px); }
         .gen-btn:disabled { opacity: 0.3; cursor: not-allowed; }
         .ch-tab { cursor: pointer; transition: opacity 0.15s; }
         .ch-tab:hover { opacity: 0.7; }
@@ -263,10 +263,10 @@ export default function Home() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           <button onClick={() => setShowHistory(h => !h)}
-            style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: showHistory ? "#C8A96E" : "rgba(255,255,255,0.3)", padding: "5px 14px", fontSize: "10px", letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
+            style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", color: showHistory ? "#E1FF04" : "rgba(255,255,255,0.3)", padding: "5px 14px", fontSize: "10px", letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
             ◷ Storico {history.length > 0 ? `(${history.length})` : ""}
           </button>
-          <span style={{ fontSize: "10px", letterSpacing: "0.11em", color: "rgba(200,169,110,0.5)", textTransform: "uppercase" }}>L&apos;invisibile diventa strategia</span>
+          <span style={{ fontSize: "10px", letterSpacing: "0.11em", color: "rgba(225,255,4,0.5)", textTransform: "uppercase" }}>L&apos;invisibile diventa strategia</span>
         </div>
       </header>
 
@@ -285,11 +285,11 @@ export default function Home() {
           <textarea value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") generate(); }}
             placeholder={"Incolla una bozza, uno spunto o una notizia.\n\nEs: Wells Fargo multata 3 miliardi. Il danno reputazionale è stato molto di più — e nessuno lo aveva misurato prima."}
-            style={{ flex: 1, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", padding: "16px", fontSize: "14px", lineHeight: 1.75, color: "rgba(255,255,255,0.82)", minHeight: "300px", fontFamily: "inherit", caretColor: "#C8A96E" }}
+            style={{ flex: 1, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", padding: "16px", fontSize: "14px", lineHeight: 1.75, color: "rgba(255,255,255,0.82)", minHeight: "300px", fontFamily: "inherit", caretColor: "#E1FF04" }}
           />
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.16)" }}>{input.length > 0 ? `${input.length} car · ⌘↵` : "⌘+Enter per generare"}</span>
-            <button className="gen-btn" onClick={generate} disabled={loading || !input.trim()} style={{ background: "#C8A96E", border: "none", color: "#0D0D0B", padding: "11px 26px", fontSize: "11px", letterSpacing: "0.13em", textTransform: "uppercase", fontWeight: "500", cursor: "pointer", fontFamily: "inherit" }}>
+            <button className="gen-btn" onClick={generate} disabled={loading || !input.trim()} style={{ background: "#E1FF04", border: "none", color: "#0D0D0B", padding: "11px 26px", fontSize: "11px", letterSpacing: "0.13em", textTransform: "uppercase", fontWeight: "500", cursor: "pointer", fontFamily: "inherit" }}>
               {loading ? "Generando…" : "Genera contenuti"}
             </button>
           </div>
@@ -308,16 +308,16 @@ export default function Home() {
 
           {!result && !loading && !error && (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "10px", opacity: 0.18 }}>
-              <div style={{ width: "40px", height: "40px", border: "1px solid rgba(200,169,110,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>◈</div>
+              <div style={{ width: "40px", height: "40px", border: "1px solid rgba(225,255,4,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>◈</div>
               <span style={{ fontSize: "9px", letterSpacing: "0.16em", textTransform: "uppercase" }}>Nessun contenuto</span>
             </div>
           )}
 
           {loading && (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "12px" }}>
-              <span className="pulse" style={{ fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase", color: "#C8A96E" }}>Analisi in corso</span>
+              <span className="pulse" style={{ fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase", color: "#E1FF04" }}>Analisi in corso</span>
               <div style={{ display: "flex", gap: "5px" }}>
-                {[0,1,2].map(i => <div key={i} className="pulse" style={{ width: "3px", height: "3px", background: "#C8A96E", borderRadius: "50%", animationDelay: `${i * 0.18}s` }} />)}
+                {[0,1,2].map(i => <div key={i} className="pulse" style={{ width: "3px", height: "3px", background: "#E1FF04", borderRadius: "50%", animationDelay: `${i * 0.18}s` }} />)}
               </div>
             </div>
           )}
@@ -333,7 +333,7 @@ export default function Home() {
             <div className="fadein">
               <div style={{ display: "flex", gap: "2px", marginBottom: "14px", flexWrap: "wrap" }}>
                 {CHANNELS.map(ch => (
-                  <button key={ch.id} className="ch-tab" onClick={() => setActive(ch.id)} style={{ background: active === ch.id ? "rgba(200,169,110,0.11)" : "transparent", border: active === ch.id ? "1px solid rgba(200,169,110,0.32)" : "1px solid rgba(255,255,255,0.07)", color: active === ch.id ? "#C8A96E" : "rgba(255,255,255,0.3)", padding: "5px 11px", fontSize: "10px", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "inherit" }}>
+                  <button key={ch.id} className="ch-tab" onClick={() => setActive(ch.id)} style={{ background: active === ch.id ? "rgba(225,255,4,0.11)" : "transparent", border: active === ch.id ? "1px solid rgba(225,255,4,0.32)" : "1px solid rgba(255,255,255,0.07)", color: active === ch.id ? "#E1FF04" : "rgba(255,255,255,0.3)", padding: "5px 11px", fontSize: "10px", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "inherit" }}>
                     {ch.icon} {ch.label}
                   </button>
                 ))}
