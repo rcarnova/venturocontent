@@ -21,8 +21,10 @@ const CHANNEL_INSTRUCTIONS = {
     schema: `{"titolo":"titolo della newsletter","intro":"testo dell apertura"}`,
   },
   image_prompt: {
-    instruction: "Crea un prompt per generare un immagine coerente con il contenuto. Stile minimal editoriale, no persone stilizzate. Descrivi composizione, palette, atmosfera.",
-    schema: `{"prompt":"descrizione dell immagine"}`,
+    instruction: `Crea un prompt Midjourney in italiano per un'immagine billboard nel deserto ispirata al contenuto.
+Struttura del prompt: la parola chiave concettuale centrale del post scritta su un billboard classico americano, deserto arido, luce radente dorata o crepuscolare, fotografia editoriale analogica, atmosfera Prada Marfa. Colori desaturati con un accento cromatico coerente col tema. Cielo vasto, nessuna persona, nessun testo aggiuntivo oltre la parola chiave sul billboard.
+Concludi sempre con: --ar 16:9 --v 6.1 --style raw`,
+    schema: '{"prompt":"il prompt Midjourney completo"}',
   },
 };
 

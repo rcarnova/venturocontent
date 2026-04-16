@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 
-const VENTURO_IMAGE_STYLE = `\n\n—\nStile fisso Venturo: fotografia editoriale europea. Nessuna persona. Nessun testo. Palette contenuta: bianchi polverosi, grigi ardesia, un solo accento caldo (ocra o ambra tenue). Luce naturale laterale o diffusa. Composizione essenziale, molto spazio negativo. Atmosfera sospesa, silenziosa. Qualità fotografica concettuale, non illustrativa. Formato orizzontale 16:9. No filtri Instagram, no stock photo aesthetic.`;
+const VENTURO_IMAGE_STYLE = `\n\n—\nNote tecniche Midjourney: fotografia analogica, qualità editoriale. Nessuna persona. Palette desaturata con un solo accento cromatico. Billboard classico americano nel deserto, luce radente dorata o crepuscolare, cielo vasto, atmosfera Prada Marfa. --ar 16:9 --v 6.1 --style raw`;
 
 const CHANNELS = [
   { id: "linkedin_long", label: "LinkedIn Long", icon: "◈" },
