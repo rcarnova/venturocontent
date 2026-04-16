@@ -21,9 +21,9 @@ const CHANNEL_INSTRUCTIONS = {
     schema: `{"titolo":"titolo della newsletter","intro":"testo dell apertura"}`,
   },
   image_prompt: {
-    instruction: `Crea un prompt Midjourney in italiano per un'immagine billboard nel deserto ispirata al contenuto.
-Struttura del prompt: la parola chiave concettuale centrale del post scritta su un billboard classico americano, deserto arido, luce radente dorata o crepuscolare, fotografia editoriale analogica, atmosfera Prada Marfa. Colori desaturati con un accento cromatico coerente col tema. Cielo vasto, nessuna persona, nessun testo aggiuntivo oltre la parola chiave sul billboard.
-Concludi sempre con: --ar 16:9 --v 6.1 --style raw`,
+            instruction: `Crea un prompt Midjourney per un billboard nel deserto ispirato al contenuto.
+Formato esatto da usare: [PAROLA CHIAVE] scritta in maiuscolo sul billboard, billboard classico americano nel deserto del Mojave, luce radente dorata al tramonto, fotografia analogica editoriale, atmosfera Prada Marfa, colori desaturati, cielo vasto, montagne in lontananza, nessuna persona --no logos --ar 16:9
+Identifica la parola chiave concettuale centrale del post e sostituiscila a [PAROLA CHIAVE].`,
     schema: '{"prompt":"il prompt Midjourney completo"}',
   },
 };
