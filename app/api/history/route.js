@@ -1,4 +1,4 @@
-import { put, list, get } from "@vercel/blob";
+import { put, list } from "@vercel/blob";
 
 export const dynamic = "force-dynamic";
 
@@ -14,17 +14,19 @@ async function readHistory() {
     console.log("[history] blobs found:", blobs.length);
     if (!blobs.length) return [];
 
-    // Usa get() dell'SDK — gestisce auth internamente per store privati
-    const blobResult = await get(blobs[0].url, { token });
-    console.log("[history] get result type:", typeof blobResult);
+    // Fetch con token per blob privato
+    const res = await fetch(blobs[0].url, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    console.log("[history] fetch status:", res.status);
 
-    if (!blobResult) {
-      console.log("[history] get returned null");
+    if (!res.ok) {
+      console.error("[history] fetch failed:", res.status);
       return [];
     }
 
-    // get() restituisce un Blob object — leggi il testo
-    const text = await blobResult.text();
+    const text = await res.text();
     console.log("[history] text preview:", text.slice(0, 80));
 
     const data = JSON.parse(text);
@@ -42,6 +44,7 @@ async function writeHistory(history) {
   const result = await put(HISTORY_BLOB_KEY, JSON.stringify(history), {
     access: "private",
     addRandomSuffix: false,
+    allowOverwrite: true,
     contentType: "application/json",
     token,
   });

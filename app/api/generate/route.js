@@ -101,7 +101,9 @@ export async function POST(req) {
     }
 
     // Image prompt is plain text
+    console.log("[image] raw preview:", imageRaw.slice(0, 200));
     const image_prompt = imageRaw.trim().replace(/^["']|["']$/g, "");
+    console.log("[image] result:", image_prompt.slice(0, 100));
 
     return Response.json({
       ...main,
