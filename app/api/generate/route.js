@@ -29,7 +29,7 @@ export async function POST(req) {
     const message = await withRetry(() =>
       client.messages.create({
         model: "claude-sonnet-4-6",
-        max_tokens: 2000,
+        max_tokens: 4096,
         system: SYSTEM,
         messages: [{ role: "user", content: input }],
       })
@@ -45,10 +45,34 @@ export async function POST(req) {
       throw new Error("JSON non trovato nella risposta");
     }
 
-    const jsonStr = raw.slice(s, e + 1);
-    console.log("[generate] Attempting to parse JSON from position", s, "to", e);
+    const jsonStr = raw.slice(s, e + 1).trim();
+    console.log("[generate] Extracted JSON length:", jsonStr.length);
+    console.log("[generate] JSON preview:", jsonStr.slice(0, 100), "...", jsonStr.slice(-50));
     
-    const parsed = JSON.parse(jsonStr);
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonStr);
+    } catch (parseErr) {
+      const pos = parseInt(parseErr.message.match(/position (\d+)/)?.[1] || "0");
+      console.error("[generate] JSON parse error at:", parseErr.message);
+      console.error("[generate] Problematic JSON section:", jsonStr.slice(Math.max(0, pos - 100), Math.min(jsonStr.length, pos + 100)));
+
+      // LLMs sometimes emit literal control characters inside JSON strings — sanitize and retry
+      const sanitized = jsonStr.replace(/[\x00-\x1F\x7F]/g, (c) => {
+        if (c === "\n") return "\\n";
+        if (c === "\r") return "\\r";
+        if (c === "\t") return "\\t";
+        if (c === "\b") return "\\b";
+        if (c === "\f") return "\\f";
+        return ""; // strip other non-printable chars
+      });
+      try {
+        parsed = JSON.parse(sanitized);
+        console.log("[generate] Parsed after sanitization");
+      } catch (sanitizeErr) {
+        throw new Error(`JSON parsing failed: ${parseErr.message}`);
+      }
+    }
     return Response.json(parsed);
   } catch (err) {
     console.error("[generate] Error:", err.message);

@@ -1,5 +1,7 @@
 import { put, list, get } from "@vercel/blob";
 
+export const dynamic = "force-dynamic";
+
 const HISTORY_BLOB_KEY = "venturo-history.json";
 const MAX_HISTORY = 20;
 

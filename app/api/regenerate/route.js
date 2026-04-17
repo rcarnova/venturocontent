@@ -47,8 +47,15 @@ function extractJson(raw) {
     console.error("[regenerate] First parse attempt failed:", err.message);
   }
 
-  // Try with newline/tab cleanup
-  const cleaned = raw.replace(/[\r\n]+/g, " ").replace(/\t/g, " ").trim();
+  // Try with control character cleanup — escape rather than replace to preserve content
+  const cleaned = raw.replace(/[\x00-\x1F\x7F]/g, (c) => {
+    if (c === "\n") return "\\n";
+    if (c === "\r") return "\\r";
+    if (c === "\t") return "\\t";
+    if (c === "\b") return "\\b";
+    if (c === "\f") return "\\f";
+    return "";
+  });
   try {
     const s = cleaned.indexOf("{");
     const e = cleaned.lastIndexOf("}");
