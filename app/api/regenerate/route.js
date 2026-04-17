@@ -20,10 +20,16 @@ const CHANNEL_INSTRUCTIONS = {
     instruction: "Scrivi un titolo e un apertura newsletter per Venturo. L'intro deve essere 150-200 parole, aprire una riflessione senza dare risposte.",
     schema: `{"titolo":"titolo della newsletter","intro":"testo dell apertura"}`,
   },
+  carousel: {
+    instruction: `Crea 5 slide tipografiche per un carosello LinkedIn che sintetizzano il post. Ogni slide ha un titolo (max 5 parole) e una frase chiave (max 12 parole). Le slide devono fluire come un racconto: apertura provocatoria, sviluppo, tensione, insight, chiusura con domanda o call to action. Tono Venturo: diretto, essenziale, riflessivo.`,
+    schema: '[{"slide":1,"titolo":"titolo","testo":"frase"},{"slide":2,"titolo":"titolo","testo":"frase"},{"slide":3,"titolo":"titolo","testo":"frase"},{"slide":4,"titolo":"titolo","testo":"frase"},{"slide":5,"titolo":"titolo","testo":"frase"}]',
+  },
   image_prompt: {
-            instruction: `Crea un prompt Midjourney per un billboard nel deserto ispirato al contenuto.
-Formato esatto da usare: [PAROLA CHIAVE] scritta in maiuscolo sul billboard, billboard classico americano nel deserto del Mojave, luce radente dorata al tramonto, fotografia analogica editoriale, atmosfera Prada Marfa, colori desaturati, cielo vasto, montagne in lontananza, nessuna persona --no logos --ar 16:9
-Identifica la parola chiave concettuale centrale del post e sostituiscila a [PAROLA CHIAVE].`,
+                    instruction: `Crea un prompt Midjourney per un'immagine prodotto ispirata al contenuto.
+Estrai la parola chiave concettuale centrale e scegli un oggetto fisico concreto che la rappresenta metaforicamente.
+Genera la parte variabile in inglese: [oggetto] + [posizione] + [sfondo semplice].
+Poi aggiungi sempre: , product photography, warm golden light from above, soft shadows, vintage advertising photography 1980s, Kodachrome film grain, rich saturated colors, commercial product shot
+Rispondi SOLO con il testo del prompt. Niente JSON. Niente backtick.`,
     schema: '{"prompt":"il prompt Midjourney completo"}',
   },
 };
@@ -36,49 +42,17 @@ Pillar: Economia dell identita / Anatomia del non detto / Conversazioni che cont
 Audience: HR, founder, CEO, marketing director italiani.`;
 
 function extractJson(raw) {
-  // Sanitize control chars first, then use a brace counter to find the real closing }
-  const sanitized = raw.replace(/[\x00-\x1F\x7F]/g, (c) => {
-    if (c === "\n") return "\\n";
-    if (c === "\r") return "\\r";
-    if (c === "\t") return "\\t";
-    if (c === "\b") return "\\b";
-    if (c === "\f") return "\\f";
-    return "";
-  });
-
-  const start = sanitized.indexOf("{");
-  if (start === -1) {
-    console.error("[regenerate] Raw response:", raw.slice(0, 500));
-    throw new Error("JSON non trovato. Raw: " + raw.slice(0, 300));
-  }
-
-  let depth = 0;
-  let inString = false;
-  let escape = false;
-
-  for (let i = start; i < sanitized.length; i++) {
-    const c = sanitized[i];
-    if (escape) { escape = false; continue; }
-    if (c === "\\") { escape = true; continue; }
-    if (c === '"') { inString = !inString; continue; }
-    if (inString) continue;
-    if (c === "{") depth++;
-    if (c === "}") {
-      depth--;
-      if (depth === 0) {
-        const jsonStr = sanitized.slice(start, i + 1);
-        try {
-          return JSON.parse(jsonStr);
-        } catch (err) {
-          console.error("[regenerate] Parse failed:", err.message);
-          console.error("[regenerate] Around error:", jsonStr.slice(Math.max(0, parseInt(err.message.match(/position (\d+)/)?.[1] || "0") - 100)));
-          throw new Error("JSON non parsabile: " + err.message);
-        }
-      }
-    }
-  }
-
-  console.error("[regenerate] Raw response:", raw.slice(0, 500));
+  try {
+    const s = raw.indexOf("{");
+    const e = raw.lastIndexOf("}");
+    if (s !== -1 && e !== -1) return JSON.parse(raw.slice(s, e + 1));
+  } catch {}
+  const cleaned = raw.replace(/[\r\n]+/g, "\\n").replace(/\t/g, " ");
+  try {
+    const s = cleaned.indexOf("{");
+    const e = cleaned.lastIndexOf("}");
+    if (s !== -1 && e !== -1) return JSON.parse(cleaned.slice(s, e + 1));
+  } catch {}
   throw new Error("JSON non parsabile. Raw: " + raw.slice(0, 300));
 }
 
