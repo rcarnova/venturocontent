@@ -1,59 +1,61 @@
-import { put, list } from "@vercel/blob";
-
 export const dynamic = "force-dynamic";
 
-const HISTORY_BLOB_KEY = "venturo-history.json";
+const GITHUB_API = "https://api.github.com";
+const REPO = process.env.GITHUB_REPO; // es: rcarnova/venturocontent
+const FILE_PATH = "data/history.json";
+const BRANCH = "main";
 const MAX_HISTORY = 20;
+
+async function githubRequest(method, path, body) {
+  const token = process.env.GITHUB_TOKEN;
+  const res = await fetch(`${GITHUB_API}/repos/${REPO}/contents/${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    cache: "no-store",
+  });
+  return res;
+}
 
 async function readHistory() {
   try {
-    const token = process.env.BLOB_READ_WRITE_TOKEN;
-    const { blobs } = await list({ prefix: HISTORY_BLOB_KEY, token });
-    console.log("[history] blobs found:", blobs.length);
-    if (!blobs.length) return [];
-
-    const blob = blobs[0];
-    console.log("[history] blob url:", blob.url?.slice(0, 60));
-
-    // For private blobs on Vercel, use the downloadUrl if available,
-    // otherwise append the token as query param
-    const downloadUrl = blob.downloadUrl || `${blob.url}?token=${token}`;
-
-    const res = await fetch(downloadUrl, { cache: "no-store" });
-    console.log("[history] fetch status:", res.status);
-
-    if (!res.ok) {
-      const body = await res.text();
-      console.error("[history] fetch error:", res.status, body.slice(0, 100));
-      return [];
-    }
-
-    const data = await res.json();
-    console.log("[history] entries loaded:", Array.isArray(data) ? data.length : "not array");
-    return Array.isArray(data) ? data : [];
+    const res = await githubRequest("GET", FILE_PATH);
+    if (res.status === 404) return { data: [], sha: null };
+    if (!res.ok) throw new Error(`GitHub GET failed: ${res.status}`);
+    const json = await res.json();
+    const content = Buffer.from(json.content, "base64").toString("utf-8");
+    return { data: JSON.parse(content), sha: json.sha };
   } catch (err) {
     console.error("[history] readHistory error:", err.message);
-    return [];
+    return { data: [], sha: null };
   }
 }
 
-async function writeHistory(history) {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  console.log("[history] writing", history.length, "entries");
-  const result = await put(HISTORY_BLOB_KEY, JSON.stringify(history), {
-    access: "private",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: "application/json",
-    token,
-  });
-  console.log("[history] written ok:", result.pathname);
+async function writeHistory(history, sha) {
+  const content = Buffer.from(JSON.stringify(history, null, 2)).toString("base64");
+  const body = {
+    message: "update history",
+    content,
+    branch: BRANCH,
+    ...(sha ? { sha } : {}),
+  };
+  const res = await githubRequest("PUT", FILE_PATH, body);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`GitHub PUT failed: ${res.status} ${err.slice(0, 100)}`);
+  }
+  console.log("[history] written ok");
 }
 
 export async function GET() {
   try {
-    const history = await readHistory();
-    return Response.json(history);
+    const { data } = await readHistory();
+    return Response.json(data);
   } catch (err) {
     console.error("[history] GET error:", err.message);
     return Response.json({ error: err.message }, { status: 500 });
@@ -65,10 +67,10 @@ export async function POST(req) {
     const entry = await req.json();
     if (!entry?.id) return Response.json({ error: "Entry non valida" }, { status: 400 });
 
-    const history = await readHistory();
-    const filtered = history.filter(e => e.id !== entry.id);
+    const { data, sha } = await readHistory();
+    const filtered = data.filter(e => e.id !== entry.id);
     const newHistory = [entry, ...filtered].slice(0, MAX_HISTORY);
-    await writeHistory(newHistory);
+    await writeHistory(newHistory, sha);
     return Response.json(newHistory);
   } catch (err) {
     console.error("[history] POST error:", err.message);
@@ -79,9 +81,9 @@ export async function POST(req) {
 export async function DELETE(req) {
   try {
     const { id } = await req.json();
-    const history = await readHistory();
-    const newHistory = history.filter(e => e.id !== id);
-    await writeHistory(newHistory);
+    const { data, sha } = await readHistory();
+    const newHistory = data.filter(e => e.id !== id);
+    await writeHistory(newHistory, sha);
     return Response.json(newHistory);
   } catch (err) {
     console.error("[history] DELETE error:", err.message);
