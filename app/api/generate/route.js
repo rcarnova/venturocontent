@@ -1,116 +1,90 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { withRetry } from "../../lib/retry";
+import { put, list } from "@vercel/blob";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+export const dynamic = "force-dynamic";
 
-const SYSTEM_MAIN = `Sei il motore editoriale di Venturo, boutique di consulenza in cultura organizzativa ed employer branding.
+const HISTORY_BLOB_KEY = "venturo-history.json";
+const MAX_HISTORY = 20;
 
-IDENTITA: Culture Emergence Practice. Tagline: L'invisibile diventa strategia. Belief: L'identità non è un tema soft, è l'unica strategia che regge. Nemico: apparire senza sostanza.
+async function readHistory() {
+  try {
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    const { blobs } = await list({ prefix: HISTORY_BLOB_KEY, token });
+    console.log("[history] blobs found:", blobs.length);
+    if (!blobs.length) return [];
 
-TONO: Diretto (vai al punto), Riflessivo (domande potenti), Essenziale (sintesi con calore).
+    const blob = blobs[0];
+    console.log("[history] blob url:", blob.url?.slice(0, 60));
 
-CONTENT PILLARS:
-1. Economia dell'identità — ROI dell'identità chiara
-2. Anatomia del non detto — pattern invisibili che bloccano le organizzazioni
-3. Conversazioni che contano — metodo Lumen, domande potenti
-4. Casi reali — prima/dopo sulla consapevolezza organizzativa
+    // For private blobs on Vercel, use the downloadUrl if available,
+    // otherwise append the token as query param
+    const downloadUrl = blob.downloadUrl || `${blob.url}?token=${token}`;
 
-AUDIENCE: HR, founder, CEO, marketing director italiani.
+    const res = await fetch(downloadUrl, { cache: "no-store" });
+    console.log("[history] fetch status:", res.status);
 
-Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
+    if (!res.ok) {
+      const body = await res.text();
+      console.error("[history] fetch error:", res.status, body.slice(0, 100));
+      return [];
+    }
 
-{"pillar":"uno dei 4 pillar","angolo":"angolo strategico Venturo in 1 frase","linkedin_long":{"testo":"post 800-1200 caratteri: hook breve, sviluppo, domanda finale. Tono Venturo. A capo per respirare.","hashtag":["#tag1","#tag2","#tag3"]},"linkedin_short":{"testo":"max 300 caratteri. Una tensione o domanda.","hashtag":["#tag1","#tag2"]},"twitter":{"testo":"max 240 caratteri. Aforisma o domanda netta."},"substack":{"titolo":"titolo newsletter Venturo","intro":"150-200 parole. Apre riflessione, non dà risposte."}}`;
+    const data = await res.json();
+    console.log("[history] entries loaded:", Array.isArray(data) ? data.length : "not array");
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error("[history] readHistory error:", err.message);
+    return [];
+  }
+}
 
-const SYSTEM_CAROUSEL = `Sei il motore editoriale di Venturo, boutique di consulenza in cultura organizzativa ed employer branding.
-Tono: Diretto, Riflessivo, Essenziale. Audience: HR, founder, CEO italiani.
-
-Crea 5 slide tipografiche per un carosello LinkedIn che sintetizzano il post fornito.
-Ogni slide: titolo max 5 parole, testo max 12 parole. Fluiscono come racconto: apertura provocatoria, sviluppo, tensione, insight, chiusura con domanda.
-
-Rispondi SOLO con JSON. Niente testo fuori. Niente backtick.
-[{"slide":1,"titolo":"titolo","testo":"testo"},{"slide":2,"titolo":"titolo","testo":"testo"},{"slide":3,"titolo":"titolo","testo":"testo"},{"slide":4,"titolo":"titolo","testo":"testo"},{"slide":5,"titolo":"titolo","testo":"testo"}]`;
-
-const SYSTEM_IMAGE = `Sei il motore editoriale di Venturo, boutique di consulenza in cultura organizzativa ed employer branding.
-
-Crea un prompt Midjourney per un billboard nel deserto ispirato al contenuto.
-Identifica la parola chiave concettuale centrale (es: CULTURA, IDENTITA, COERENZA).
-Formato: [PAROLA CHIAVE] scritta in maiuscolo sul billboard, billboard classico americano nel deserto del Mojave, luce radente dorata al tramonto, fotografia analogica editoriale, atmosfera Prada Marfa, colori desaturati, cielo vasto, montagne in lontananza, nessuna persona --no logos --ar 16:9
-
-Rispondi SOLO con il testo del prompt, senza JSON, senza backtick, senza spiegazioni.`;
-
-function sanitizeJson(str) {
-  return str.replace(/[\u0000-\u001F\u007F]/g, (c) => {
-    if (c === "\n") return "\\n";
-    if (c === "\r") return "";
-    if (c === "\t") return " ";
-    return "";
+async function writeHistory(history) {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  console.log("[history] writing", history.length, "entries");
+  const result = await put(HISTORY_BLOB_KEY, JSON.stringify(history), {
+    access: "private",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: "application/json",
+    token,
   });
+  console.log("[history] written ok:", result.pathname);
 }
 
-function parseJson(raw) {
-  const firstObj = raw.indexOf("{");
-  const firstArr = raw.indexOf("[");
-
-  let s, e;
-  if (firstObj === -1 && firstArr === -1) throw new Error("JSON non trovato");
-  if (firstObj === -1) { s = firstArr; e = raw.lastIndexOf("]"); }
-  else if (firstArr === -1) { s = firstObj; e = raw.lastIndexOf("}"); }
-  else if (firstArr < firstObj) { s = firstArr; e = raw.lastIndexOf("]"); }
-  else { s = firstObj; e = raw.lastIndexOf("}"); }
-
-  if (e === -1) throw new Error("JSON non trovato");
-  return JSON.parse(sanitizeJson(raw.slice(s, e + 1)));
-}
-
-async function callClaude(system, userContent, maxTokens = 1500) {
-  const message = await withRetry(() =>
-    client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: maxTokens,
-      system,
-      messages: [{ role: "user", content: userContent }],
-    })
-  );
-  return message.content.filter(b => b.type === "text").map(b => b.text).join("");
+export async function GET() {
+  try {
+    const history = await readHistory();
+    return Response.json(history);
+  } catch (err) {
+    console.error("[history] GET error:", err.message);
+    return Response.json({ error: err.message }, { status: 500 });
+  }
 }
 
 export async function POST(req) {
   try {
-    const { input } = await req.json();
-    if (!input?.trim()) return Response.json({ error: "Input vuoto" }, { status: 400 });
+    const entry = await req.json();
+    if (!entry?.id) return Response.json({ error: "Entry non valida" }, { status: 400 });
 
-    // Run all three calls in parallel
-    const [mainRaw, carouselRaw, imageRaw] = await Promise.all([
-      callClaude(SYSTEM_MAIN, input, 2000),
-      callClaude(SYSTEM_CAROUSEL, input, 800),
-      callClaude(SYSTEM_IMAGE, input, 300),
-    ]);
-
-    // Parse main
-    const main = parseJson(mainRaw);
-
-    // Parse carousel
-    let carousel = [];
-    try {
-      console.log("[carousel] raw preview:", carouselRaw.slice(0, 300));
-      const parsed = parseJson(carouselRaw);
-      carousel = Array.isArray(parsed) ? parsed : [];
-      console.log("[carousel] parsed ok, slides:", carousel.length);
-    } catch (e) {
-      console.error("[carousel] parse error:", e.message, "raw:", carouselRaw.slice(0, 200));
-    }
-
-    // Image prompt is plain text
-    console.log("[image] raw preview:", imageRaw.slice(0, 200));
-    const image_prompt = imageRaw.trim().replace(/^["']|["']$/g, "");
-    console.log("[image] result:", image_prompt.slice(0, 100));
-
-    return Response.json({
-      ...main,
-      carousel,
-      image_prompt,
-    });
+    const history = await readHistory();
+    const filtered = history.filter(e => e.id !== entry.id);
+    const newHistory = [entry, ...filtered].slice(0, MAX_HISTORY);
+    await writeHistory(newHistory);
+    return Response.json(newHistory);
   } catch (err) {
+    console.error("[history] POST error:", err.message);
+    return Response.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req) {
+  try {
+    const { id } = await req.json();
+    const history = await readHistory();
+    const newHistory = history.filter(e => e.id !== id);
+    await writeHistory(newHistory);
+    return Response.json(newHistory);
+  } catch (err) {
+    console.error("[history] DELETE error:", err.message);
     return Response.json({ error: err.message }, { status: 500 });
   }
 }
