@@ -92,10 +92,12 @@ export async function POST(req) {
     // Parse carousel
     let carousel = [];
     try {
+      console.log("[carousel] raw preview:", carouselRaw.slice(0, 300));
       const parsed = parseJson(carouselRaw);
       carousel = Array.isArray(parsed) ? parsed : [];
+      console.log("[carousel] parsed ok, slides:", carousel.length);
     } catch (e) {
-      console.error("carousel parse error:", e.message);
+      console.error("[carousel] parse error:", e.message, "raw:", carouselRaw.slice(0, 200));
     }
 
     // Image prompt is plain text
