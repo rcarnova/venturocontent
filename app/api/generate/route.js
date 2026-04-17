@@ -48,9 +48,17 @@ function sanitizeJson(str) {
 }
 
 function parseJson(raw) {
-  const s = raw.indexOf("{") !== -1 ? raw.indexOf("{") : raw.indexOf("[");
-  const e = raw.lastIndexOf("}") !== -1 ? raw.lastIndexOf("}") : raw.lastIndexOf("]");
-  if (s === -1 || e === -1) throw new Error("JSON non trovato");
+  const firstObj = raw.indexOf("{");
+  const firstArr = raw.indexOf("[");
+
+  let s, e;
+  if (firstObj === -1 && firstArr === -1) throw new Error("JSON non trovato");
+  if (firstObj === -1) { s = firstArr; e = raw.lastIndexOf("]"); }
+  else if (firstArr === -1) { s = firstObj; e = raw.lastIndexOf("}"); }
+  else if (firstArr < firstObj) { s = firstArr; e = raw.lastIndexOf("]"); }
+  else { s = firstObj; e = raw.lastIndexOf("}"); }
+
+  if (e === -1) throw new Error("JSON non trovato");
   return JSON.parse(sanitizeJson(raw.slice(s, e + 1)));
 }
 
