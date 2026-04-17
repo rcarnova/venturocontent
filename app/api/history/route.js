@@ -8,30 +8,29 @@ const MAX_HISTORY = 20;
 async function readHistory() {
   try {
     const token = process.env.BLOB_READ_WRITE_TOKEN;
-
-    // Trova il blob
     const { blobs } = await list({ prefix: HISTORY_BLOB_KEY, token });
     console.log("[history] blobs found:", blobs.length);
     if (!blobs.length) return [];
 
-    // Fetch con token per blob privato
-    const res = await fetch(blobs[0].url, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
+    const blob = blobs[0];
+    console.log("[history] blob url:", blob.url?.slice(0, 60));
+
+    // For private blobs on Vercel, use the downloadUrl if available,
+    // otherwise append the token as query param
+    const downloadUrl = blob.downloadUrl || `${blob.url}?token=${token}`;
+
+    const res = await fetch(downloadUrl, { cache: "no-store" });
     console.log("[history] fetch status:", res.status);
 
     if (!res.ok) {
-      console.error("[history] fetch failed:", res.status);
+      const body = await res.text();
+      console.error("[history] fetch error:", res.status, body.slice(0, 100));
       return [];
     }
 
-    const text = await res.text();
-    console.log("[history] text preview:", text.slice(0, 80));
-
-    const data = JSON.parse(text);
-    console.log("[history] entries loaded:", data.length);
-    return data;
+    const data = await res.json();
+    console.log("[history] entries loaded:", Array.isArray(data) ? data.length : "not array");
+    return Array.isArray(data) ? data : [];
   } catch (err) {
     console.error("[history] readHistory error:", err.message);
     return [];
