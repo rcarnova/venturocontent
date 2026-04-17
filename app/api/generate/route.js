@@ -3,7 +3,7 @@ import { withRetry } from "../../lib/retry";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const SYSTEM = `Sei il motore editoriale di Venturo, boutique di consulenza in cultura organizzativa ed employer branding.
+const SYSTEM_MAIN = `Sei il motore editoriale di Venturo, boutique di consulenza in cultura organizzativa ed employer branding.
 
 IDENTITA: Culture Emergence Practice. Tagline: L'invisibile diventa strategia. Belief: L'identità non è un tema soft, è l'unica strategia che regge. Nemico: apparire senza sostanza.
 
@@ -17,43 +17,53 @@ CONTENT PILLARS:
 
 AUDIENCE: HR, founder, CEO, marketing director italiani.
 
-Rispondi SOLO con JSON valido. Niente testo fuori dal JSON. Niente backtick. Inizia con { finisci con }.
+Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
 
-{"pillar":"uno dei 4 pillar","angolo":"angolo strategico Venturo in 1 frase","linkedin_long":{"testo":"post 800-1200 caratteri: hook breve, sviluppo, domanda finale. Tono Venturo. A capo per respirare.","hashtag":["#tag1","#tag2","#tag3"]},"linkedin_short":{"testo":"max 300 caratteri. Una tensione o domanda.","hashtag":["#tag1","#tag2"]},"twitter":{"testo":"max 240 caratteri. Aforisma o domanda netta."},"substack":{"titolo":"titolo newsletter Venturo","intro":"150-200 parole. Apre riflessione, non dà risposte."},"image_prompt":"prompt Midjourney per un billboard nel deserto. Identifica la parola chiave concettuale centrale del post (es: CULTURA, IDENTITA, COERENZA) e costruisci il prompt in questo formato esatto: [parola chiave] scritta in maiuscolo sul billboard, billboard classico americano nel deserto del Mojave, luce radente dorata al tramonto, fotografia analogica editoriale, atmosfera Prada Marfa, colori desaturati, cielo vasto, montagne in lontananza, nessuna persona --no logos --ar 16:9 --v 6.1 --style raw"}`;
+{"pillar":"uno dei 4 pillar","angolo":"angolo strategico Venturo in 1 frase","linkedin_long":{"testo":"post 800-1200 caratteri: hook breve, sviluppo, domanda finale. Tono Venturo. A capo per respirare.","hashtag":["#tag1","#tag2","#tag3"]},"linkedin_short":{"testo":"max 300 caratteri. Una tensione o domanda.","hashtag":["#tag1","#tag2"]},"twitter":{"testo":"max 240 caratteri. Aforisma o domanda netta."},"substack":{"titolo":"titolo newsletter Venturo","intro":"150-200 parole. Apre riflessione, non dà risposte."}}`;
 
-// Sanitize control chars then extract JSON using a brace counter.
-// lastIndexOf("}") is unreliable when the LLM appends trailing text containing }.
-function extractJson(raw) {
-  // Escape literal control chars so the brace counter and JSON.parse agree
-  const sanitized = raw.replace(/[\x00-\x1F\x7F]/g, (c) => {
+const SYSTEM_CAROUSEL = `Sei il motore editoriale di Venturo, boutique di consulenza in cultura organizzativa ed employer branding.
+Tono: Diretto, Riflessivo, Essenziale. Audience: HR, founder, CEO italiani.
+
+Crea 5 slide tipografiche per un carosello LinkedIn che sintetizzano il post fornito.
+Ogni slide: titolo max 5 parole, testo max 12 parole. Fluiscono come racconto: apertura provocatoria, sviluppo, tensione, insight, chiusura con domanda.
+
+Rispondi SOLO con JSON. Niente testo fuori. Niente backtick.
+[{"slide":1,"titolo":"titolo","testo":"testo"},{"slide":2,"titolo":"titolo","testo":"testo"},{"slide":3,"titolo":"titolo","testo":"testo"},{"slide":4,"titolo":"titolo","testo":"testo"},{"slide":5,"titolo":"titolo","testo":"testo"}]`;
+
+const SYSTEM_IMAGE = `Sei il motore editoriale di Venturo, boutique di consulenza in cultura organizzativa ed employer branding.
+
+Crea un prompt Midjourney per un billboard nel deserto ispirato al contenuto.
+Identifica la parola chiave concettuale centrale (es: CULTURA, IDENTITA, COERENZA).
+Formato: [PAROLA CHIAVE] scritta in maiuscolo sul billboard, billboard classico americano nel deserto del Mojave, luce radente dorata al tramonto, fotografia analogica editoriale, atmosfera Prada Marfa, colori desaturati, cielo vasto, montagne in lontananza, nessuna persona --no logos --ar 16:9
+
+Rispondi SOLO con il testo del prompt, senza JSON, senza backtick, senza spiegazioni.`;
+
+function sanitizeJson(str) {
+  return str.replace(/[\u0000-\u001F\u007F]/g, (c) => {
     if (c === "\n") return "\\n";
-    if (c === "\r") return "\\r";
-    if (c === "\t") return "\\t";
-    if (c === "\b") return "\\b";
-    if (c === "\f") return "\\f";
+    if (c === "\r") return "";
+    if (c === "\t") return " ";
     return "";
   });
+}
 
-  const start = sanitized.indexOf("{");
-  if (start === -1) return null;
+function parseJson(raw) {
+  const s = raw.indexOf("{") !== -1 ? raw.indexOf("{") : raw.indexOf("[");
+  const e = raw.lastIndexOf("}") !== -1 ? raw.lastIndexOf("}") : raw.lastIndexOf("]");
+  if (s === -1 || e === -1) throw new Error("JSON non trovato");
+  return JSON.parse(sanitizeJson(raw.slice(s, e + 1)));
+}
 
-  let depth = 0;
-  let inString = false;
-  let escape = false;
-
-  for (let i = start; i < sanitized.length; i++) {
-    const c = sanitized[i];
-    if (escape) { escape = false; continue; }
-    if (c === "\\") { escape = true; continue; }
-    if (c === '"') { inString = !inString; continue; }
-    if (inString) continue;
-    if (c === "{") depth++;
-    if (c === "}") {
-      depth--;
-      if (depth === 0) return sanitized.slice(start, i + 1);
-    }
-  }
-  return null;
+async function callClaude(system, userContent, maxTokens = 1500) {
+  const message = await withRetry(() =>
+    client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: "user", content: userContent }],
+    })
+  );
+  return message.content.filter(b => b.type === "text").map(b => b.text).join("");
 }
 
 export async function POST(req) {
@@ -61,37 +71,34 @@ export async function POST(req) {
     const { input } = await req.json();
     if (!input?.trim()) return Response.json({ error: "Input vuoto" }, { status: 400 });
 
-    const message = await withRetry(() =>
-      client.messages.create({
-        model: "claude-sonnet-4-6",
-        max_tokens: 4096,
-        system: SYSTEM,
-        messages: [{ role: "user", content: input }],
-      })
-    );
+    // Run all three calls in parallel
+    const [mainRaw, carouselRaw, imageRaw] = await Promise.all([
+      callClaude(SYSTEM_MAIN, input, 2000),
+      callClaude(SYSTEM_CAROUSEL, input, 800),
+      callClaude(SYSTEM_IMAGE, input, 300),
+    ]);
 
-    const raw = message.content.filter(b => b.type === "text").map(b => b.text).join("");
-    console.log("[generate] Raw response length:", raw.length);
+    // Parse main
+    const main = parseJson(mainRaw);
 
-    const jsonStr = extractJson(raw);
-    if (!jsonStr) {
-      console.error("[generate] JSON not found. Raw:", raw.slice(0, 500));
-      throw new Error("JSON non trovato nella risposta");
-    }
-    console.log("[generate] Extracted JSON length:", jsonStr.length);
-
-    let parsed;
+    // Parse carousel
+    let carousel = [];
     try {
-      parsed = JSON.parse(jsonStr);
-    } catch (parseErr) {
-      const pos = parseInt(parseErr.message.match(/position (\d+)/)?.[1] || "0");
-      console.error("[generate] JSON parse error:", parseErr.message);
-      console.error("[generate] Around position:", jsonStr.slice(Math.max(0, pos - 100), Math.min(jsonStr.length, pos + 100)));
-      throw new Error(`JSON parsing failed: ${parseErr.message}`);
+      const parsed = parseJson(carouselRaw);
+      carousel = Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error("carousel parse error:", e.message);
     }
-    return Response.json(parsed);
+
+    // Image prompt is plain text
+    const image_prompt = imageRaw.trim().replace(/^["']|["']$/g, "");
+
+    return Response.json({
+      ...main,
+      carousel,
+      image_prompt,
+    });
   } catch (err) {
-    console.error("[generate] Error:", err.message);
     return Response.json({ error: err.message }, { status: 500 });
   }
 }
