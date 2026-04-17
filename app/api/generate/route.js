@@ -21,6 +21,41 @@ Rispondi SOLO con JSON valido. Niente testo fuori dal JSON. Niente backtick. Ini
 
 {"pillar":"uno dei 4 pillar","angolo":"angolo strategico Venturo in 1 frase","linkedin_long":{"testo":"post 800-1200 caratteri: hook breve, sviluppo, domanda finale. Tono Venturo. A capo per respirare.","hashtag":["#tag1","#tag2","#tag3"]},"linkedin_short":{"testo":"max 300 caratteri. Una tensione o domanda.","hashtag":["#tag1","#tag2"]},"twitter":{"testo":"max 240 caratteri. Aforisma o domanda netta."},"substack":{"titolo":"titolo newsletter Venturo","intro":"150-200 parole. Apre riflessione, non dà risposte."},"image_prompt":"prompt Midjourney per un billboard nel deserto. Identifica la parola chiave concettuale centrale del post (es: CULTURA, IDENTITA, COERENZA) e costruisci il prompt in questo formato esatto: [parola chiave] scritta in maiuscolo sul billboard, billboard classico americano nel deserto del Mojave, luce radente dorata al tramonto, fotografia analogica editoriale, atmosfera Prada Marfa, colori desaturati, cielo vasto, montagne in lontananza, nessuna persona --no logos --ar 16:9 --v 6.1 --style raw"}`;
 
+// Sanitize control chars then extract JSON using a brace counter.
+// lastIndexOf("}") is unreliable when the LLM appends trailing text containing }.
+function extractJson(raw) {
+  // Escape literal control chars so the brace counter and JSON.parse agree
+  const sanitized = raw.replace(/[\x00-\x1F\x7F]/g, (c) => {
+    if (c === "\n") return "\\n";
+    if (c === "\r") return "\\r";
+    if (c === "\t") return "\\t";
+    if (c === "\b") return "\\b";
+    if (c === "\f") return "\\f";
+    return "";
+  });
+
+  const start = sanitized.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < sanitized.length; i++) {
+    const c = sanitized[i];
+    if (escape) { escape = false; continue; }
+    if (c === "\\") { escape = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === "{") depth++;
+    if (c === "}") {
+      depth--;
+      if (depth === 0) return sanitized.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
 export async function POST(req) {
   try {
     const { input } = await req.json();
@@ -37,41 +72,22 @@ export async function POST(req) {
 
     const raw = message.content.filter(b => b.type === "text").map(b => b.text).join("");
     console.log("[generate] Raw response length:", raw.length);
-    
-    const s = raw.indexOf("{");
-    const e = raw.lastIndexOf("}");
-    if (s === -1 || e === -1) {
-      console.error("[generate] JSON markers not found. Raw:", raw.slice(0, 500));
+
+    const jsonStr = extractJson(raw);
+    if (!jsonStr) {
+      console.error("[generate] JSON not found. Raw:", raw.slice(0, 500));
       throw new Error("JSON non trovato nella risposta");
     }
-
-    const jsonStr = raw.slice(s, e + 1).trim();
     console.log("[generate] Extracted JSON length:", jsonStr.length);
-    console.log("[generate] JSON preview:", jsonStr.slice(0, 100), "...", jsonStr.slice(-50));
-    
+
     let parsed;
     try {
       parsed = JSON.parse(jsonStr);
     } catch (parseErr) {
       const pos = parseInt(parseErr.message.match(/position (\d+)/)?.[1] || "0");
-      console.error("[generate] JSON parse error at:", parseErr.message);
-      console.error("[generate] Problematic JSON section:", jsonStr.slice(Math.max(0, pos - 100), Math.min(jsonStr.length, pos + 100)));
-
-      // LLMs sometimes emit literal control characters inside JSON strings — sanitize and retry
-      const sanitized = jsonStr.replace(/[\x00-\x1F\x7F]/g, (c) => {
-        if (c === "\n") return "\\n";
-        if (c === "\r") return "\\r";
-        if (c === "\t") return "\\t";
-        if (c === "\b") return "\\b";
-        if (c === "\f") return "\\f";
-        return ""; // strip other non-printable chars
-      });
-      try {
-        parsed = JSON.parse(sanitized);
-        console.log("[generate] Parsed after sanitization");
-      } catch (sanitizeErr) {
-        throw new Error(`JSON parsing failed: ${parseErr.message}`);
-      }
+      console.error("[generate] JSON parse error:", parseErr.message);
+      console.error("[generate] Around position:", jsonStr.slice(Math.max(0, pos - 100), Math.min(jsonStr.length, pos + 100)));
+      throw new Error(`JSON parsing failed: ${parseErr.message}`);
     }
     return Response.json(parsed);
   } catch (err) {

@@ -36,19 +36,8 @@ Pillar: Economia dell identita / Anatomia del non detto / Conversazioni che cont
 Audience: HR, founder, CEO, marketing director italiani.`;
 
 function extractJson(raw) {
-  try {
-    const s = raw.indexOf("{");
-    const e = raw.lastIndexOf("}");
-    if (s !== -1 && e !== -1) {
-      const jsonStr = raw.slice(s, e + 1);
-      return JSON.parse(jsonStr);
-    }
-  } catch (err) {
-    console.error("[regenerate] First parse attempt failed:", err.message);
-  }
-
-  // Try with control character cleanup — escape rather than replace to preserve content
-  const cleaned = raw.replace(/[\x00-\x1F\x7F]/g, (c) => {
+  // Sanitize control chars first, then use a brace counter to find the real closing }
+  const sanitized = raw.replace(/[\x00-\x1F\x7F]/g, (c) => {
     if (c === "\n") return "\\n";
     if (c === "\r") return "\\r";
     if (c === "\t") return "\\t";
@@ -56,15 +45,37 @@ function extractJson(raw) {
     if (c === "\f") return "\\f";
     return "";
   });
-  try {
-    const s = cleaned.indexOf("{");
-    const e = cleaned.lastIndexOf("}");
-    if (s !== -1 && e !== -1) {
-      const jsonStr = cleaned.slice(s, e + 1);
-      return JSON.parse(jsonStr);
+
+  const start = sanitized.indexOf("{");
+  if (start === -1) {
+    console.error("[regenerate] Raw response:", raw.slice(0, 500));
+    throw new Error("JSON non trovato. Raw: " + raw.slice(0, 300));
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < sanitized.length; i++) {
+    const c = sanitized[i];
+    if (escape) { escape = false; continue; }
+    if (c === "\\") { escape = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === "{") depth++;
+    if (c === "}") {
+      depth--;
+      if (depth === 0) {
+        const jsonStr = sanitized.slice(start, i + 1);
+        try {
+          return JSON.parse(jsonStr);
+        } catch (err) {
+          console.error("[regenerate] Parse failed:", err.message);
+          console.error("[regenerate] Around error:", jsonStr.slice(Math.max(0, parseInt(err.message.match(/position (\d+)/)?.[1] || "0") - 100)));
+          throw new Error("JSON non parsabile: " + err.message);
+        }
+      }
     }
-  } catch (err) {
-    console.error("[regenerate] Second parse attempt failed:", err.message);
   }
 
   console.error("[regenerate] Raw response:", raw.slice(0, 500));
