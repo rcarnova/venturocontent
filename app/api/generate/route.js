@@ -7,7 +7,8 @@ const BASE = `Sei il motore editoriale di Venturo, boutique di consulenza in cul
 Culture Emergence Practice. Tagline: L'invisibile diventa strategia.
 Tono: Diretto, Riflessivo, Essenziale.
 Pillar: Economia dell'identità / Anatomia del non detto / Conversazioni che contano / Casi reali.
-Audience: HR, founder, CEO, marketing director italiani.`;
+Audience: HR, founder, CEO, marketing director italiani.
+IMPORTANTE: Scrivi sempre in italiano corretto con tutti gli accenti (è, à, ù, ì, ò) e apostrofi (dell'identità, l'organizzazione, c'è). Non omettere mai accenti o apostrofi.`;
 
 const SYSTEM_META = `${BASE}
 
@@ -24,7 +25,7 @@ const SYSTEM_SUBSTACK = `${BASE}
 
 Scrivi un titolo e apertura newsletter. Intro 150-200 parole, apre riflessione senza dare risposte.
 Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
-{"titolo":"titolo della newsletter","intro":"testo dell apertura"}`;
+{"titolo":"titolo della newsletter","intro":"testo dell'apertura"}`;
 
 const SYSTEM_CAROUSEL = `${BASE}
 
