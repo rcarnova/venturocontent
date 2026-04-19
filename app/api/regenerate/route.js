@@ -43,17 +43,25 @@ Audience: HR, founder, CEO, marketing director italiani.
 IMPORTANTE: Scrivi sempre in italiano corretto con tutti gli accenti (è, à, ù, ì, ò) e apostrofi (dell'identità, l'organizzazione, c'è). Non omettere mai accenti o apostrofi.`;
 
 function extractJson(raw) {
-  try {
-    const s = raw.indexOf("{");
-    const e = raw.lastIndexOf("}");
-    if (s !== -1 && e !== -1) return JSON.parse(raw.slice(s, e + 1));
-  } catch {}
-  const cleaned = raw.replace(/[\r\n]+/g, "\\n").replace(/\t/g, " ");
-  try {
-    const s = cleaned.indexOf("{");
-    const e = cleaned.lastIndexOf("}");
-    if (s !== -1 && e !== -1) return JSON.parse(cleaned.slice(s, e + 1));
-  } catch {}
+  const firstObj = raw.indexOf("{");
+  const firstArr = raw.indexOf("[");
+  let s, e;
+
+  if (firstObj === -1 && firstArr === -1) throw new Error("JSON non trovato. Raw: " + raw.slice(0, 200));
+  if (firstObj === -1) { s = firstArr; e = raw.lastIndexOf("]"); }
+  else if (firstArr === -1) { s = firstObj; e = raw.lastIndexOf("}"); }
+  else if (firstArr < firstObj) { s = firstArr; e = raw.lastIndexOf("]"); }
+  else { s = firstObj; e = raw.lastIndexOf("}"); }
+
+  if (e === -1) throw new Error("JSON non trovato. Raw: " + raw.slice(0, 200));
+  const jsonStr = raw.slice(s, e + 1);
+
+  try { return JSON.parse(jsonStr); } catch {}
+
+  // Fallback: fix literal newlines inside string values
+  const fixed = jsonStr.replace(/\n/g, "\\n").replace(/\r/g, "").replace(/\t/g, " ");
+  try { return JSON.parse(fixed); } catch {}
+
   throw new Error("JSON non parsabile. Raw: " + raw.slice(0, 300));
 }
 
