@@ -3,12 +3,14 @@ import { withRetry } from "../../lib/retry";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// ─── VENTURO (prima persona plurale, voce istituzionale) ───────────────────
+
 const BASE = `Sei il motore editoriale di Venturo, boutique di consulenza in cultura organizzativa ed employer branding.
 Culture Emergence Practice. Tagline: L'invisibile diventa strategia.
-Tono: Diretto, Riflessivo, Essenziale.
+Tono: Diretto, Riflessivo, Essenziale. Prima persona PLURALE (noi, ci, nostro).
 Pillar: Economia dell'identità / Anatomia del non detto / Conversazioni che contano / Casi reali.
 Audience: HR, founder, CEO, marketing director italiani.
-IMPORTANTE: Scrivi sempre in italiano corretto con tutti gli accenti (è, à, ù, ì, ò) e apostrofi (dell'identità, l'organizzazione, c'è). Non omettere mai accenti o apostrofi.`;
+IMPORTANTE: Scrivi sempre in italiano corretto con tutti gli accenti (è, à, ù, ì, ò) e apostrofi (dell'identità, l'organizzazione, c'è).`;
 
 const SYSTEM_META = `${BASE}
 
@@ -17,13 +19,13 @@ Analizza l'input e rispondi SOLO con JSON valido. Niente testo fuori. Niente bac
 
 const SYSTEM_LONG = `${BASE}
 
-Scrivi un post LinkedIn long form. Struttura: hook breve, sviluppo, domanda finale. 800-1200 caratteri. A capo per respirare.
+Scrivi un post LinkedIn long form. Prima persona PLURALE. Struttura: hook breve, sviluppo, domanda finale. 800-1200 caratteri. A capo per respirare.
 Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
 {"testo":"il post completo","hashtag":["#tag1","#tag2","#tag3"]}`;
 
 const SYSTEM_SUBSTACK = `${BASE}
 
-Scrivi un titolo e apertura newsletter. Intro 150-200 parole, apre riflessione senza dare risposte.
+Scrivi un titolo e apertura newsletter. Prima persona PLURALE. Intro 150-200 parole, apre riflessione senza dare risposte.
 Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
 {"titolo":"titolo della newsletter","intro":"testo dell'apertura"}`;
 
@@ -34,16 +36,50 @@ Fluiscono come racconto: apertura provocatoria, sviluppo, tensione, insight, chi
 Rispondi SOLO con JSON array valido. Niente testo fuori. Niente backtick. Inizia con [ finisci con ].
 [{"slide":1,"titolo":"titolo","testo":"testo"},{"slide":2,"titolo":"titolo","testo":"testo"},{"slide":3,"titolo":"titolo","testo":"testo"},{"slide":4,"titolo":"titolo","testo":"testo"},{"slide":5,"titolo":"titolo","testo":"testo"}]`;
 
-const SYSTEM_IMAGE = `${BASE}
+// ─── MASSIMO (prima persona singolare, stile personale) ────────────────────
 
-Crea un prompt Midjourney per un'immagine prodotto ispirata al post LinkedIn.
-Estrai la parola chiave concettuale centrale del post e scegli un oggetto fisico concreto che la rappresenta metaforicamente.
-Genera SOLO la parte variabile del prompt in inglese: [oggetto] + [posizione/orientamento] + [sfondo semplice].
-Esempio: "a vintage japanese scissors, vertical position, a bit open with paper background"
-Esempio: "a worn leather notebook, slightly open at 45 degrees, spine facing camera, on a white linen background"
-Esempio: "a brass compass, open and slightly tilted, face up on a cream textured paper background"
-Dopo la parte variabile aggiungi sempre esattamente: , product photography, warm golden light from above, soft shadows, vintage advertising photography 1980s, Kodachrome film grain, rich saturated colors, commercial product shot
+const MASSIMO_BASE = `Sei Massimo Benedetti, partner di Venturo, consulente di cultura organizzativa e storyteller.
+Stile: parti sempre da un oggetto concreto o una scena vissuta, poi arrivi al concetto organizzativo.
+Tono caldo, colloquiale, prima persona SINGOLARE (io, mi, mio). Coinvolgi il lettore direttamente con "voi" o domande.
+Usi emoji sparsi come punteggiatura emotiva, mai eccessivi. Hashtag organici dentro il testo quando pertinenti.
+La metafora emerge dall'oggetto, non è dichiarata. Chiudi con un rimando o una domanda aperta.
+IMPORTANTE: Scrivi sempre in italiano corretto con tutti gli accenti e apostrofi.`;
+
+const MASSIMO_META = `${MASSIMO_BASE}
+
+Analizza l'input e rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
+{"pillar":"uno dei 4 pillar Venturo","angolo":"angolo strategico in 1 frase stile Massimo","linkedin_short":{"testo":"max 300 caratteri. Concreto, caldo, con un oggetto o scena.","hashtag":["#tag1","#tag2"]},"twitter":{"testo":"max 240 caratteri. Aforisma personale o domanda diretta."}}`;
+
+const MASSIMO_LONG = `${MASSIMO_BASE}
+
+Scrivi un post LinkedIn long form come Massimo Benedetti. Parti da un oggetto o scena concreta, sviluppa la metafora, arrivi al concetto organizzativo. Prima persona singolare. 800-1200 caratteri. A capo per respirare.
+Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
+{"testo":"il post completo","hashtag":["#tag1","#tag2","#tag3"]}`;
+
+const MASSIMO_SUBSTACK = `${MASSIMO_BASE}
+
+Scrivi un titolo e apertura newsletter come Massimo. Tono personale, parte da una scena vissuta. Prima persona singolare. 150-200 parole.
+Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
+{"titolo":"titolo personale","intro":"apertura in prima persona singolare"}`;
+
+const MASSIMO_CAROUSEL = `${MASSIMO_BASE}
+
+Crea 5 slide tipografiche per un carosello LinkedIn stile Massimo. Ogni slide: titolo max 5 parole, testo max 12 parole.
+Fluiscono come racconto personale: scena concreta, sviluppo, tensione, insight, domanda finale.
+Rispondi SOLO con JSON array valido. Niente testo fuori. Niente backtick. Inizia con [ finisci con ].
+[{"slide":1,"titolo":"titolo","testo":"testo"},{"slide":2,"titolo":"titolo","testo":"testo"},{"slide":3,"titolo":"titolo","testo":"testo"},{"slide":4,"titolo":"titolo","testo":"testo"},{"slide":5,"titolo":"titolo","testo":"testo"}]`;
+
+// ─── IMAGE (uguale per entrambe le modalità) ───────────────────────────────
+
+const SYSTEM_IMAGE = `Sei il motore editoriale di Venturo, boutique di consulenza in cultura organizzativa ed employer branding.
+
+Crea un prompt Midjourney per uno still life fotografico simbolico ispirato al post LinkedIn.
+Estrai la parola chiave concettuale centrale e scegli 1-2 oggetti fisici concreti che la rappresentano metaforicamente.
+Genera la parte variabile in inglese: [oggetto] + [posizione/orientamento] + [sfondo semplice].
+Poi aggiungi sempre esattamente: , product photography, warm golden light from above, soft shadows, vintage advertising photography 1980s, Kodachrome film grain, rich saturated colors, commercial product shot
 Rispondi SOLO con il testo del prompt completo. Niente JSON. Niente backtick. Niente spiegazioni.`;
+
+// ─── UTILS ─────────────────────────────────────────────────────────────────
 
 function parseJson(raw) {
   const firstObj = raw.indexOf("{");
@@ -59,11 +95,8 @@ function parseJson(raw) {
   if (e === -1) throw new Error("JSON non trovato");
   const jsonStr = raw.slice(s, e + 1);
 
-  // Try direct parse first — apostrophes in values are valid JSON
   try { return JSON.parse(jsonStr); } catch {}
 
-  // Fallback: the model may have included literal newlines inside string values
-  // Replace literal newlines inside JSON strings with escaped version
   const fixed = jsonStr.replace(/\n/g, "\\n").replace(/\r/g, "").replace(/\t/g, " ");
   return JSON.parse(fixed);
 }
@@ -80,17 +113,24 @@ async function callClaude(system, userContent, maxTokens) {
   return message.content.filter(b => b.type === "text").map(b => b.text).join("");
 }
 
+// ─── HANDLER ───────────────────────────────────────────────────────────────
+
 export async function POST(req) {
   try {
-    const { input } = await req.json();
+    const { input, mode } = await req.json();
     if (!input?.trim()) return Response.json({ error: "Input vuoto" }, { status: 400 });
 
-    // 5 parallel calls — each small and focused
+    const isMassimo = mode === "massimo";
+    const sMeta = isMassimo ? MASSIMO_META : SYSTEM_META;
+    const sLong = isMassimo ? MASSIMO_LONG : SYSTEM_LONG;
+    const sSubstack = isMassimo ? MASSIMO_SUBSTACK : SYSTEM_SUBSTACK;
+    const sCarousel = isMassimo ? MASSIMO_CAROUSEL : SYSTEM_CAROUSEL;
+
     const [metaRaw, longRaw, substackRaw, carouselRaw, imageRaw] = await Promise.all([
-      callClaude(SYSTEM_META, input, 600),
-      callClaude(SYSTEM_LONG, input, 1200),
-      callClaude(SYSTEM_SUBSTACK, input, 600),
-      callClaude(SYSTEM_CAROUSEL, input, 800),
+      callClaude(sMeta, input, 600),
+      callClaude(sLong, input, 1200),
+      callClaude(sSubstack, input, 600),
+      callClaude(sCarousel, input, 800),
       callClaude(SYSTEM_IMAGE, input, 200),
     ]);
 
@@ -118,6 +158,7 @@ export async function POST(req) {
     return Response.json({
       pillar: meta.pillar,
       angolo: meta.angolo,
+      mode: mode || "venturo",
       linkedin_long,
       linkedin_short: meta.linkedin_short,
       twitter: meta.twitter,
