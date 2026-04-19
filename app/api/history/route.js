@@ -1,61 +1,45 @@
 export const dynamic = "force-dynamic";
 
-const GITHUB_API = "https://api.github.com";
-const REPO = process.env.GITHUB_REPO; // es: rcarnova/venturocontent
-const FILE_PATH = "data/history.json";
-const BRANCH = "main";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
+const TABLE = "venturo_history";
 const MAX_HISTORY = 20;
 
-async function githubRequest(method, path, body) {
-  const token = process.env.GITHUB_TOKEN;
-  const res = await fetch(`${GITHUB_API}/repos/${REPO}/contents/${path}`, {
+async function supabase(method, path, body) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     method,
     headers: {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "Prefer": method === "POST" ? "resolution=merge-duplicates" : "",
     },
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
   });
-  return res;
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Supabase ${method} failed: ${res.status} ${err.slice(0, 100)}`);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
 }
 
 async function readHistory() {
-  try {
-    const res = await githubRequest("GET", FILE_PATH);
-    if (res.status === 404) return { data: [], sha: null };
-    if (!res.ok) throw new Error(`GitHub GET failed: ${res.status}`);
-    const json = await res.json();
-    const content = Buffer.from(json.content, "base64").toString("utf-8");
-    return { data: JSON.parse(content), sha: json.sha };
-  } catch (err) {
-    console.error("[history] readHistory error:", err.message);
-    return { data: [], sha: null };
-  }
-}
-
-async function writeHistory(history, sha) {
-  const content = Buffer.from(JSON.stringify(history, null, 2)).toString("base64");
-  const body = {
-    message: "update history",
-    content,
-    branch: BRANCH,
-    ...(sha ? { sha } : {}),
-  };
-  const res = await githubRequest("PUT", FILE_PATH, body);
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`GitHub PUT failed: ${res.status} ${err.slice(0, 100)}`);
-  }
-  console.log("[history] written ok");
+  const data = await supabase("GET", `${TABLE}?order=timestamp.desc&limit=${MAX_HISTORY}`);
+  return Array.isArray(data) ? data : [];
 }
 
 export async function GET() {
   try {
-    const { data } = await readHistory();
-    return Response.json(data);
+    const rows = await readHistory();
+    const history = rows.map(r => ({
+      id: r.id,
+      timestamp: r.timestamp,
+      input: r.input,
+      result: r.result,
+    }));
+    return Response.json(history);
   } catch (err) {
     console.error("[history] GET error:", err.message);
     return Response.json({ error: err.message }, { status: 500 });
@@ -67,11 +51,23 @@ export async function POST(req) {
     const entry = await req.json();
     if (!entry?.id) return Response.json({ error: "Entry non valida" }, { status: 400 });
 
-    const { data, sha } = await readHistory();
-    const filtered = data.filter(e => e.id !== entry.id);
-    const newHistory = [entry, ...filtered].slice(0, MAX_HISTORY);
-    await writeHistory(newHistory, sha);
-    return Response.json(newHistory);
+    // Upsert — insert or update if same id
+    await supabase("POST", `${TABLE}`, {
+      id: entry.id,
+      timestamp: entry.timestamp,
+      input: entry.input,
+      result: entry.result,
+    });
+
+    // Return updated history
+    const rows = await readHistory();
+    const history = rows.map(r => ({
+      id: r.id,
+      timestamp: r.timestamp,
+      input: r.input,
+      result: r.result,
+    }));
+    return Response.json(history);
   } catch (err) {
     console.error("[history] POST error:", err.message);
     return Response.json({ error: err.message }, { status: 500 });
@@ -81,10 +77,16 @@ export async function POST(req) {
 export async function DELETE(req) {
   try {
     const { id } = await req.json();
-    const { data, sha } = await readHistory();
-    const newHistory = data.filter(e => e.id !== id);
-    await writeHistory(newHistory, sha);
-    return Response.json(newHistory);
+    await supabase("DELETE", `${TABLE}?id=eq.${id}`);
+
+    const rows = await readHistory();
+    const history = rows.map(r => ({
+      id: r.id,
+      timestamp: r.timestamp,
+      input: r.input,
+      result: r.result,
+    }));
+    return Response.json(history);
   } catch (err) {
     console.error("[history] DELETE error:", err.message);
     return Response.json({ error: err.message }, { status: 500 });
