@@ -23,11 +23,19 @@ Scrivi un post LinkedIn long form. Prima persona PLURALE. Struttura: hook breve,
 Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
 {"testo":"il post completo","hashtag":["#tag1","#tag2","#tag3"]}`;
 
-const SYSTEM_SUBSTACK = `${BASE}
+const SYSTEM_BLOG = `${BASE}
 
-Scrivi un titolo e apertura newsletter. Prima persona PLURALE. Intro 150-200 parole, apre riflessione senza dare risposte.
+Scrivi un articolo blog in stile Venturo. Struttura obbligatoria:
+1. Titolo incisivo + sottotitolo che anticipa la tesi (1 frase)
+2. Apertura: contesto o dati rilevanti (2-3 paragrafi)
+3. Problema: il pattern che si ripete nelle organizzazioni
+4. Svolta: il punto in cui cambia tutto, spesso da una scena o esperienza concreta
+5. Sezione "In sintesi": 4-5 bullet points per chi decide (titolo fisso: "In sintesi (per chi deve decidere)")
+6. Sezione "Cosa fare": 3-4 domande pratiche per il lettore
+7. Chiusura: 1-2 frasi che rimandano all'azione, senza CTA esplicita
+Lunghezza: 600-900 parole. Tono: diretto, autorevole, mai accademico. Prima persona PLURALE.
 Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
-{"titolo":"titolo della newsletter","intro":"testo dell'apertura"}`;
+{"titolo":"titolo dell'articolo","sottotitolo":"sottotitolo che anticipa la tesi","corpo":"testo completo dell'articolo con le sezioni indicate"}`;
 
 const SYSTEM_CAROUSEL = `${BASE}
 
@@ -56,11 +64,18 @@ Scrivi un post LinkedIn long form come Massimo Benedetti. Parti da un oggetto o 
 Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
 {"testo":"il post completo","hashtag":["#tag1","#tag2","#tag3"]}`;
 
-const MASSIMO_SUBSTACK = `${MASSIMO_BASE}
+const MASSIMO_BLOG = `${MASSIMO_BASE}
 
-Scrivi un titolo e apertura newsletter come Massimo. Tono personale, parte da una scena vissuta. Prima persona singolare. 150-200 parole.
-Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
-{"titolo":"titolo personale","intro":"apertura in prima persona singolare"}`;
+Scrivi un articolo blog stile Venturo ma con la voce personale di Massimo Benedetti. Struttura:
+1. Titolo + sottotitolo
+2. Apertura: una scena o oggetto concreto vissuto da Massimo che porta al tema
+3. Sviluppo: il pattern organizzativo che emerge da quella scena
+4. Sezione "In sintesi": 4-5 bullet points pratici
+5. Sezione "Cosa fare": 3-4 domande per il lettore
+6. Chiusura personale
+Lunghezza: 600-900 parole. Prima persona singolare. Tono caldo e diretto.
+Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick.
+{"titolo":"titolo","sottotitolo":"sottotitolo","corpo":"testo completo"}`;
 
 const MASSIMO_CAROUSEL = `${MASSIMO_BASE}
 
@@ -123,13 +138,13 @@ export async function POST(req) {
     const isMassimo = mode === "massimo";
     const sMeta = isMassimo ? MASSIMO_META : SYSTEM_META;
     const sLong = isMassimo ? MASSIMO_LONG : SYSTEM_LONG;
-    const sSubstack = isMassimo ? MASSIMO_SUBSTACK : SYSTEM_SUBSTACK;
+    const sBlog = isMassimo ? MASSIMO_BLOG : SYSTEM_BLOG;
     const sCarousel = isMassimo ? MASSIMO_CAROUSEL : SYSTEM_CAROUSEL;
 
-    const [metaRaw, longRaw, substackRaw, carouselRaw, imageRaw] = await Promise.all([
+    const [metaRaw, longRaw, blogRaw, carouselRaw, imageRaw] = await Promise.all([
       callClaude(sMeta, input, 600),
       callClaude(sLong, input, 1200),
-      callClaude(sSubstack, input, 600),
+      callClaude(sBlog, input, 1500),
       callClaude(sCarousel, input, 800),
       callClaude(SYSTEM_IMAGE, input, 200),
     ]);
@@ -140,9 +155,9 @@ export async function POST(req) {
     try { linkedin_long = parseJson(longRaw); }
     catch (e) { console.error("[generate] long parse error:", e.message); }
 
-    let substack = { titolo: "", intro: "" };
-    try { substack = parseJson(substackRaw); }
-    catch (e) { console.error("[generate] substack parse error:", e.message); }
+    let blog = { titolo: "", sottotitolo: "", corpo: "" };
+    try { blog = parseJson(blogRaw); }
+    catch (e) { console.error("[generate] blog parse error:", e.message); }
 
     let carousel = [];
     try {
@@ -162,7 +177,7 @@ export async function POST(req) {
       linkedin_long,
       linkedin_short: meta.linkedin_short,
       twitter: meta.twitter,
-      substack,
+      blog,
       carousel,
       image_prompt,
     });

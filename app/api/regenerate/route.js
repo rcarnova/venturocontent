@@ -16,9 +16,9 @@ const CHANNEL_INSTRUCTIONS = {
     instruction: "Scrivi un tweet per Venturo. Max 240 caratteri. Aforisma o domanda provocatoria.",
     schema: `{"testo":"il testo del tweet"}`,
   },
-  substack: {
-    instruction: "Scrivi un titolo e un apertura newsletter per Venturo. L'intro deve essere 150-200 parole, aprire una riflessione senza dare risposte.",
-    schema: `{"titolo":"titolo della newsletter","intro":"testo dell apertura"}`,
+  blog: {
+    instruction: `Scrivi un articolo blog in stile Venturo. Struttura: titolo + sottotitolo, apertura con contesto, problema (pattern nelle organizzazioni), svolta concreta, sezione "In sintesi" con 4-5 bullet points, sezione "Cosa fare" con 3-4 domande pratiche, chiusura. 600-900 parole. Prima persona plurale. Tono diretto e autorevole.`,
+    schema: '{"titolo":"titolo","sottotitolo":"sottotitolo","corpo":"testo completo"}',
   },
   carousel: {
     instruction: `Crea 5 slide tipografiche per un carosello LinkedIn che sintetizzano il post. Ogni slide ha un titolo (max 5 parole) e una frase chiave (max 12 parole). Le slide devono fluire come un racconto: apertura provocatoria, sviluppo, tensione, insight, chiusura con domanda o call to action. Tono Venturo: diretto, essenziale, riflessivo.`,
