@@ -43,6 +43,9 @@ Audience: HR, founder, CEO, marketing director italiani.
 IMPORTANTE: Scrivi sempre in italiano corretto con tutti gli accenti (è, à, ù, ì, ò) e apostrofi (dell'identità, l'organizzazione, c'è). Non omettere mai accenti o apostrofi.`;
 
 function extractJson(raw) {
+  // Strip markdown code fences if present
+  raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+
   const firstObj = raw.indexOf("{");
   const firstArr = raw.indexOf("[");
   let s, e;

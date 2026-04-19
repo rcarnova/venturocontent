@@ -97,6 +97,9 @@ Rispondi SOLO con il testo del prompt completo. Niente JSON. Niente backtick. Ni
 // ─── UTILS ─────────────────────────────────────────────────────────────────
 
 function parseJson(raw) {
+  // Strip markdown code fences if present
+  raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+
   const firstObj = raw.indexOf("{");
   const firstArr = raw.indexOf("[");
   let s, e;
