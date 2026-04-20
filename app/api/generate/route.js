@@ -97,8 +97,8 @@ Rispondi SOLO con il testo del prompt completo. Niente JSON. Niente backtick. Ni
 // ─── UTILS ─────────────────────────────────────────────────────────────────
 
 function parseJson(raw) {
-  // Strip markdown code fences if present
-  raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+  // Strip markdown code fences if present (handles ```json, ```, or partial fences)
+  raw = raw.replace(/^```(?:json|JSON)?[\r\n]*/i, "").replace(/[\r\n]*```\s*$/i, "").trim();
 
   const firstObj = raw.indexOf("{");
   const firstArr = raw.indexOf("[");
@@ -147,7 +147,7 @@ export async function POST(req) {
     const [metaRaw, longRaw, blogRaw, carouselRaw, imageRaw] = await Promise.all([
       callClaude(sMeta, input, 600),
       callClaude(sLong, input, 1200),
-      callClaude(sBlog, input, 1500),
+      callClaude(sBlog, input, 2500),
       callClaude(sCarousel, input, 800),
       callClaude(SYSTEM_IMAGE, input, 200),
     ]);
