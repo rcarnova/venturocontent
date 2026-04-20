@@ -23,19 +23,24 @@ Scrivi un post LinkedIn long form. Prima persona PLURALE. Struttura: hook breve,
 Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
 {"testo":"il post completo","hashtag":["#tag1","#tag2","#tag3"]}`;
 
-const SYSTEM_BLOG = `${BASE}
+const SYSTEM_BLOG_META = `${BASE}
 
-Scrivi un articolo blog in stile Venturo. Struttura obbligatoria:
-1. Titolo incisivo + sottotitolo che anticipa la tesi (1 frase)
-2. Apertura: contesto o dati rilevanti (2-3 paragrafi)
-3. Problema: il pattern che si ripete nelle organizzazioni
-4. Svolta: il punto in cui cambia tutto, spesso da una scena o esperienza concreta
-5. Sezione "In sintesi": 4-5 bullet points per chi decide (titolo fisso: "In sintesi (per chi deve decidere)")
-6. Sezione "Cosa fare": 3-4 domande pratiche per il lettore
-7. Chiusura: 1-2 frasi che rimandano all'azione, senza CTA esplicita
-Lunghezza: 600-900 parole. Tono: diretto, autorevole, mai accademico. Prima persona PLURALE.
-Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
-{"titolo":"titolo dell'articolo","sottotitolo":"sottotitolo che anticipa la tesi","corpo":"testo completo dell'articolo con le sezioni indicate"}`;
+Genera SOLO titolo e sottotitolo per un articolo blog Venturo ispirato all'input.
+Titolo: incisivo, max 10 parole. Sottotitolo: anticipa la tesi, max 20 parole.
+Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick.
+{"titolo":"titolo dell articolo","sottotitolo":"sottotitolo che anticipa la tesi"}`;
+
+const SYSTEM_BLOG_BODY = `${BASE}
+
+Scrivi il corpo di un articolo blog Venturo. Struttura obbligatoria (NON includere titolo o sottotitolo):
+1. Apertura: contesto o dato rilevante (2-3 paragrafi)
+2. Il problema: pattern che si ripete nelle organizzazioni (2-3 paragrafi)
+3. La svolta: scena o esperienza concreta che cambia prospettiva (2-3 paragrafi)
+4. In sintesi (per chi deve decidere): 4-5 bullet points preceduti da "- "
+5. Cosa fare: 3-4 domande pratiche per il lettore precedute da "- "
+6. Chiusura: 1-2 frasi, no CTA esplicita
+Lunghezza totale: 600-900 parole. Prima persona PLURALE. Tono diretto, autorevole, mai accademico.
+Rispondi con SOLO il testo dell articolo, niente JSON, niente backtick, niente titoli.`;
 
 const SYSTEM_CAROUSEL = `${BASE}
 
@@ -64,18 +69,23 @@ Scrivi un post LinkedIn long form come Massimo Benedetti. Parti da un oggetto o 
 Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick. Inizia con { finisci con }.
 {"testo":"il post completo","hashtag":["#tag1","#tag2","#tag3"]}`;
 
-const MASSIMO_BLOG = `${MASSIMO_BASE}
+const MASSIMO_BLOG_META = `${MASSIMO_BASE}
 
-Scrivi un articolo blog stile Venturo ma con la voce personale di Massimo Benedetti. Struttura:
-1. Titolo + sottotitolo
-2. Apertura: una scena o oggetto concreto vissuto da Massimo che porta al tema
-3. Sviluppo: il pattern organizzativo che emerge da quella scena
-4. Sezione "In sintesi": 4-5 bullet points pratici
-5. Sezione "Cosa fare": 3-4 domande per il lettore
-6. Chiusura personale
-Lunghezza: 600-900 parole. Prima persona singolare. Tono caldo e diretto.
+Genera SOLO titolo e sottotitolo per un articolo blog come Massimo Benedetti.
+Titolo personale, max 10 parole. Sottotitolo che anticipa il tema, max 20 parole.
 Rispondi SOLO con JSON valido. Niente testo fuori. Niente backtick.
-{"titolo":"titolo","sottotitolo":"sottotitolo","corpo":"testo completo"}`;
+{"titolo":"titolo","sottotitolo":"sottotitolo"}`;
+
+const MASSIMO_BLOG_BODY = `${MASSIMO_BASE}
+
+Scrivi il corpo di un articolo blog con la voce personale di Massimo Benedetti. Struttura (NON includere titolo):
+1. Apertura: una scena o oggetto concreto vissuto che porta al tema
+2. Sviluppo: il pattern organizzativo che emerge da quella scena
+3. In sintesi: 4-5 bullet points preceduti da "- "
+4. Cosa fare: 3-4 domande pratiche precedute da "- "
+5. Chiusura personale
+600-900 parole. Prima persona singolare. Tono caldo e diretto.
+Rispondi con SOLO il testo dell articolo, niente JSON, niente backtick.`;
 
 const MASSIMO_CAROUSEL = `${MASSIMO_BASE}
 
@@ -141,13 +151,15 @@ export async function POST(req) {
     const isMassimo = mode === "massimo";
     const sMeta = isMassimo ? MASSIMO_META : SYSTEM_META;
     const sLong = isMassimo ? MASSIMO_LONG : SYSTEM_LONG;
-    const sBlog = isMassimo ? MASSIMO_BLOG : SYSTEM_BLOG;
+    const sBlogMeta = isMassimo ? MASSIMO_BLOG_META : SYSTEM_BLOG_META;
+    const sBlogBody = isMassimo ? MASSIMO_BLOG_BODY : SYSTEM_BLOG_BODY;
     const sCarousel = isMassimo ? MASSIMO_CAROUSEL : SYSTEM_CAROUSEL;
 
-    const [metaRaw, longRaw, blogRaw, carouselRaw, imageRaw] = await Promise.all([
+    const [metaRaw, longRaw, blogMetaRaw, blogBodyRaw, carouselRaw, imageRaw] = await Promise.all([
       callClaude(sMeta, input, 600),
       callClaude(sLong, input, 1200),
-      callClaude(sBlog, input, 2500),
+      callClaude(sBlogMeta, input, 200),
+      callClaude(sBlogBody, input, 3000),
       callClaude(sCarousel, input, 800),
       callClaude(SYSTEM_IMAGE, input, 200),
     ]);
@@ -159,8 +171,11 @@ export async function POST(req) {
     catch (e) { console.error("[generate] long parse error:", e.message); }
 
     let blog = { titolo: "", sottotitolo: "", corpo: "" };
-    try { blog = parseJson(blogRaw); }
-    catch (e) { console.error("[generate] blog parse error:", e.message); }
+    try {
+      const blogMeta = parseJson(blogMetaRaw);
+      const blogBody = blogBodyRaw.trim().replace(/^```[\s\S]*?\n/, "").replace(/```\s*$/, "").trim();
+      blog = { titolo: blogMeta.titolo || "", sottotitolo: blogMeta.sottotitolo || "", corpo: blogBody };
+    } catch (e) { console.error("[generate] blog parse error:", e.message); }
 
     let carousel = [];
     try {
